@@ -1961,7 +1961,8 @@
         if (typeof google !== 'undefined' && google.script && google.script.run) {
           google.script.run
             .withSuccessHandler(res => {
-              this.jamaahList = res || [];
+              const arr = Array.isArray(res) ? res : ((res && (res.data || res.list || res.jamaahList)) || []);
+              this.jamaahList = arr;
               this.isLoading = false;
               if (!this.selectedJamaahForPayment && this.jamaahList.length > 0) {
                 this.selectJamaahForPayment(this.jamaahList[0]);
