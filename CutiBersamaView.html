@@ -1,0 +1,583 @@
+<!-- MODUL CUTI BERSAMA & REKAP STATUS CUTI (mod_cuti_bersama) -->
+<div x-show="currentModule === 'mod_cuti_bersama' || isCutiBersamaModule(currentModule, currentModuleName)" class="space-y-6" x-transition>
+
+  <!-- Header Modul -->
+  <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-6 backdrop-blur-xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-lg shadow-amber-500/10">
+        <i class="fa-solid fa-calendar-day text-xl"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-slate-100 tracking-tight">Manajemen Cuti Bersama, Riwayat & Kuota Cuti</h2>
+        <p class="text-xs text-slate-400">Pengaturan daftar hari cuti bersama, approval status pengajuan cuti, dan matriks sisa kuota karyawan</p>
+      </div>
+    </div>
+
+    <!-- Quick Stat Pill / Toolbar -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+      <div class="px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center gap-2 text-xs font-medium">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        <span class="text-slate-400">Pending Approval:</span>
+        <span class="text-amber-400 font-bold font-mono" x-text="(cutiList || []).filter(c => c && c.statusApproval === 'Pending').length">0</span>
+      </div>
+      <button @click="loadCutiBersamaData(); loadCutiData(true);" class="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-xl transition-all text-xs font-medium flex items-center gap-1.5 shrink-0" title="Refresh Data">
+        <i class="fa-solid fa-rotate-right" :class="(isCutiBersamaLoading || isCutiLoading) ? 'animate-spin' : ''"></i>
+        <span class="hidden sm:inline">Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB NAVIGASI KESAMPING (HORIZONTAL TABS) -->
+  <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
+    <button @click="cutiTab = 'cuti_bersama'"
+      class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+      :class="cutiTab === 'cuti_bersama' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-lg shadow-cyan-500/10' : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'">
+      <i class="fa-solid fa-calendar-days text-sm"></i>
+      <span>a. Daftar Hari Cuti Bersama & Libur Nasional (2026)</span>
+    </button>
+
+    <button @click="cutiTab = 'riwayat_approval'"
+      class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 relative"
+      :class="cutiTab === 'riwayat_approval' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-lg shadow-amber-500/10' : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'">
+      <i class="fa-solid fa-list-check text-sm"></i>
+      <span>b. Riwayat & Approval Status Pengajuan Cuti</span>
+      <template x-if="(cutiList || []).filter(c => c && c.statusApproval === 'Pending').length > 0">
+        <span class="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-mono text-[10px] font-extrabold"
+              x-text="(cutiList || []).filter(c => c && c.statusApproval === 'Pending').length"></span>
+      </template>
+    </button>
+
+    <button @click="cutiTab = 'matriks_kuota'"
+      class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+      :class="cutiTab === 'matriks_kuota' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700'">
+      <i class="fa-solid fa-chart-pie text-sm"></i>
+      <span>c. Matriks Sisa Kuota Cuti Karyawan</span>
+    </button>
+  </div>
+
+  <!-- TAB CONTENT 1: DAFTAR HARI CUTI BERSAMA & LIBUR NASIONAL -->
+  <div x-show="cutiTab === 'cuti_bersama'" class="space-y-6" x-transition>
+    <!-- Summary Statistics Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-xl">
+        <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-umbrella-beach"></i>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">Total Cuti Bersama</span>
+          <span class="text-lg font-bold text-slate-100 font-mono" x-text="totalCbDaysCount() + ' Hari'">0 Hari</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-xl shadow-lg shadow-amber-500/5">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-scissors"></i>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">Memotong Cuti Tahunan</span>
+          <span class="text-lg font-bold text-amber-400 font-mono" x-text="totalCbPotongCount() + ' Hari'">0 Hari</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-xl shadow-lg shadow-emerald-500/5">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">Hak Cuti Tahunan Bersih</span>
+          <span class="text-lg font-bold text-emerald-400 font-mono" x-text="(12 - totalCbPotongCount()) + ' Hari'">12 Hari</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table Cuti Bersama -->
+    <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 sm:p-6 backdrop-blur-xl shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+        <h3 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-list-ol text-cyan-400"></i>
+          <span>a. Daftar Hari Cuti Bersama & Libur Nasional (<span x-text="cutiBersamaYear">2026</span>)</span>
+        </h3>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400 font-semibold hidden sm:inline">Pilih Tahun:</span>
+          <select x-model="cutiBersamaYear" @change="loadCutiBersamaData()"
+            class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-1.5 text-xs font-mono font-bold text-cyan-400 focus:outline-none focus:border-cyan-500 shadow-inner">
+            <option value="2025">Tahun 2025</option>
+            <option value="2026">Tahun 2026</option>
+            <option value="2027">Tahun 2027</option>
+            <option value="2028">Tahun 2028</option>
+          </select>
+
+          <button @click="openCutiBersamaModal()"
+            class="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-1.5 shrink-0">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Tambah</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+            <tr>
+              <th class="px-4 py-3 whitespace-nowrap min-w-[160px]">ID / Tanggal (dd mmmm yyyy)</th>
+              <th class="px-4 py-3 whitespace-nowrap min-w-[220px]">Nama Hari Libur / Cuti Bersama</th>
+              <th class="px-4 py-3 text-center whitespace-nowrap min-w-[90px]">Durasi</th>
+              <th class="px-4 py-3 text-center whitespace-nowrap min-w-[150px]">Potong Cuti Tahunan?</th>
+              <th class="px-4 py-3 min-w-[180px]">Keterangan</th>
+              <th class="px-4 py-3 text-center whitespace-nowrap min-w-[90px]">Status</th>
+              <th class="px-4 py-3 text-right whitespace-nowrap min-w-[100px]">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 bg-slate-900/40 font-medium">
+            <template x-if="cutiBersamaList.length === 0">
+              <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-slate-500 text-xs">
+                  Belum ada data Cuti Bersama untuk tahun <span x-text="cutiBersamaYear"></span>.
+                </td>
+              </tr>
+            </template>
+
+            <template x-for="item in cutiBersamaList" :key="item.id">
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="px-4 py-3">
+                  <span class="font-mono text-cyan-400 font-bold block" x-text="item.id"></span>
+                  <span class="text-[11px] text-slate-200" x-text="formatIndoDate(item.tanggal)"></span>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="font-semibold text-slate-100 block" x-text="item.namaHariLibur"></span>
+                  <span class="text-[10px] text-slate-500" x-text="'Tahun: ' + item.tahun"></span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2.5 py-1 bg-slate-800 rounded-lg text-slate-100 font-mono text-xs font-bold" x-text="item.jumlahHari + ' Hari'"></span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold"
+                    :class="item.potongCutiTahunan === 'Ya' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'"
+                    x-text="item.potongCutiTahunan === 'Ya' ? 'Ya (Potong Kuota)' : 'Tidak (Libur Biasa)'"></span>
+                </td>
+                <td class="px-4 py-3 text-slate-400" x-text="item.keterangan || '-'"></td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                    :class="item.status === 'Aktif' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'"
+                    x-text="item.status"></span>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button @click="editCutiBersama(item)" class="p-1.5 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors" title="Edit">
+                      <i class="fa-solid fa-pen-to-square text-xs"></i>
+                    </button>
+                    <button @click="deleteCutiBersama(item.id)" class="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors" title="Hapus">
+                      <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB CONTENT 2: RIWAYAT & APPROVAL STATUS -->
+  <div x-show="cutiTab === 'riwayat_approval'" class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 sm:p-6 backdrop-blur-xl shadow-xl space-y-4" x-transition>
+    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+      <h3 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-list-check text-cyan-400"></i>
+        <span>b. Riwayat & Approval Status Pengajuan Cuti</span>
+      </h3>
+      <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-cyan-300 font-bold" x-text="(cutiList || []).length + ' Total Pengajuan'"></span>
+    </div>
+
+    <!-- Filter & Toolbar -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-2">
+      <div class="relative w-full sm:w-72">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500"></i>
+        <input type="text" x-model="cutiSearchQuery" placeholder="Cari nama karyawan, NIK, tipe cuti..."
+          class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+      </div>
+
+      <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+        <span class="text-xs text-slate-400 whitespace-nowrap">Filter Status:</span>
+        <select x-model="cutiStatusFilter" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none">
+          <option value="Semua">Semua Status</option>
+          <option value="Pending">Pending Approval</option>
+          <option value="Disetujui">Disetujui</option>
+          <option value="Ditolak">Ditolak</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="overflow-x-auto rounded-xl border border-slate-800">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+          <tr>
+            <th class="px-4 py-3 whitespace-nowrap min-w-[150px]">ID / Tgl Pengajuan</th>
+            <th class="px-4 py-3 whitespace-nowrap min-w-[180px]">Karyawan</th>
+            <th class="px-4 py-3 whitespace-nowrap min-w-[130px]">Jenis Cuti</th>
+            <th class="px-4 py-3 whitespace-nowrap min-w-[200px]">Periode Cuti (dd mmmm yyyy)</th>
+            <th class="px-4 py-3 text-center whitespace-nowrap min-w-[90px]">Durasi</th>
+            <th class="px-4 py-3 min-w-[200px]">Alasan / Catatan</th>
+            <th class="px-4 py-3 text-center whitespace-nowrap min-w-[110px]">Status</th>
+            <th class="px-4 py-3 text-right whitespace-nowrap min-w-[120px]">Aksi Approval</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 bg-slate-900/40 font-medium">
+          <template x-if="filteredCutiList().length === 0">
+            <tr>
+              <td colspan="8" class="px-4 py-8 text-center text-slate-500 text-xs">
+                Tidak ada data pengajuan cuti yang ditemukan.
+              </td>
+            </tr>
+          </template>
+
+          <template x-for="item in filteredCutiList()" :key="item.cutiId">
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="px-4 py-3">
+                <span class="font-mono text-cyan-400 font-bold block" x-text="item.cutiId"></span>
+                <span class="text-[10px] text-slate-500" x-text="formatIndoDate(item.tglPengajuan)"></span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="font-semibold text-slate-100 block" x-text="item.namaKaryawan"></span>
+                <span class="text-[10px] text-slate-400 font-mono" x-text="item.jabatan + ' • NIK: ' + item.nik"></span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-medium"
+                  :class="item.tipeCuti.includes('Tahunan') ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'"
+                  x-text="item.tipeCuti"></span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="text-[11px] text-slate-200">
+                  <span x-text="formatIndoDate(item.tglMulai)"></span>
+                  <span class="text-slate-500 px-1">s.d</span>
+                  <span x-text="formatIndoDate(item.tglSelesai)"></span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span class="px-2.5 py-1 bg-slate-800 rounded-lg text-slate-100 font-mono text-xs font-bold" x-text="item.jumlahHari + ' Hari'"></span>
+              </td>
+              <td class="px-4 py-3 max-w-xs">
+                <p class="truncate text-slate-300" x-text="item.keterangan || '-'"></p>
+                <template x-if="item.catatanApproval">
+                  <p class="text-[10px] text-amber-400/90 italic truncate" x-text="'Catatan: ' + item.catatanApproval"></p>
+                </template>
+                <template x-if="item.linkDokumen">
+                  <div class="mt-1">
+                    <a :href="item.linkDokumen" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-medium transition-colors">
+                      <i class="fa-solid fa-paperclip text-cyan-400"></i>
+                      <span x-text="formatDocLinkName(item.linkDokumen)"></span>
+                      <i class="fa-solid fa-arrow-up-right-from-square text-[9px] ml-0.5"></i>
+                    </a>
+                  </div>
+                </template>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  :class="{
+                    'bg-amber-500/10 text-amber-400 border border-amber-500/30': item.statusApproval === 'Pending',
+                    'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30': item.statusApproval === 'Disetujui',
+                    'bg-rose-500/10 text-rose-400 border border-rose-500/30': item.statusApproval === 'Ditolak'
+                  }"
+                  x-text="item.statusApproval"></span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <!-- Cetak Form -->
+                  <button @click="printCutiForm(item)" class="p-1.5 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors" title="Cetak Form Pengajuan Cuti">
+                    <i class="fa-solid fa-print text-xs"></i>
+                  </button>
+                  <!-- Tombol Approval untuk Admin/Manager -->
+                  <button @click="openApprovalModal(item)"
+                    class="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg border border-cyan-500/30 text-[11px] font-semibold transition-all" title="Proses Approval">
+                    <i class="fa-solid fa-user-check"></i>
+                    <span class="hidden md:inline ml-1">Proses</span>
+                  </button>
+                  <!-- Hapus -->
+                  <template x-if="currentUser.role === 'Admin'">
+                    <button @click="deleteCutiRequest(item.cutiId)" class="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors" title="Hapus Data">
+                      <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                  </template>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB CONTENT 3: MATRIKS SISA KUOTA CUTI KARYAWAN -->
+  <div x-show="cutiTab === 'matriks_kuota'" class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 sm:p-6 backdrop-blur-xl shadow-xl space-y-6" x-transition>
+    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+      <h3 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-chart-pie text-cyan-400"></i>
+        <span>c. Matriks Sisa Kuota Cuti Karyawan</span>
+      </h3>
+      <span class="text-[11px] text-slate-500">Tahun Periode: <strong class="text-cyan-400" x-text="new Date().getFullYear()">2026</strong></span>
+    </div>
+
+    <!-- Header Stat Ringkasan Kuota -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-calendar"></i>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">Kuota Dasar HR</span>
+          <span class="text-lg font-bold text-slate-100 font-mono">12 Hari / Tahun</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-calendar-day"></i>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">Cuti Bersama (Potong Kuota)</span>
+          <span class="text-lg font-bold text-amber-400 font-mono" x-text="(cutiSummaryData.totalCbPotong || 0) + ' Hari'">0 Hari</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 border border-cyan-500/30 rounded-xl p-4 flex items-center gap-3 shadow-lg shadow-cyan-500/5">
+        <div class="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-calculator"></i>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block font-medium">Net Kuota Hak Cuti Tahunan</span>
+          <span class="text-lg font-bold text-cyan-400 font-mono" x-text="(cutiSummaryData.netQuota || 12) + ' Hari'">12 Hari</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Table -->
+    <div class="space-y-3">
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+            <tr>
+              <th class="px-4 py-3">NIK</th>
+              <th class="px-4 py-3">Nama Karyawan</th>
+              <th class="px-4 py-3">Jabatan</th>
+              <th class="px-4 py-3 text-center">Net Kuota</th>
+              <th class="px-4 py-3 text-center">Terpakai (Tahunan)</th>
+              <th class="px-4 py-3 text-center">Cuti Sakit</th>
+              <th class="px-4 py-3 text-center">Cuti Umrah</th>
+              <th class="px-4 py-3 text-center">Cuti Melahirkan</th>
+              <th class="px-4 py-3 text-center">Sisa Kuota Cuti</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 bg-slate-900/40 font-medium">
+            <template x-if="!cutiSummaryData.summary || cutiSummaryData.summary.length === 0">
+              <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-slate-500 text-xs">
+                  Belum ada data rekap cuti karyawan.
+                </td>
+              </tr>
+            </template>
+
+            <template x-for="item in (cutiSummaryData.summary || [])" :key="item.nik + item.nama">
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="px-4 py-3 font-mono text-cyan-400" x-text="item.nik || '-'"></td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-100" x-text="item.nama"></span>
+                    <template x-if="item.hasTakenCuti || (item.terpakai > 0 || item.cutiSakit > 0 || item.cutiUmrah > 0 || item.cutiMelahirkan > 0 || (item.totalCutiTaken && item.totalCutiTaken > 0))">
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 text-[10px] font-bold animate-pulse" title="Karyawan Sudah Pernah Mengambil Cuti">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+                        <i class="fa-solid fa-plane-departure text-[10px]"></i>
+                      </span>
+                    </template>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-slate-400" x-text="item.jabatan"></td>
+                <td class="px-4 py-3 text-center font-mono text-slate-300" x-text="(item.netQuota || 12) + ' Hari'"></td>
+                <td class="px-4 py-3 text-center font-mono text-amber-400 font-bold" x-text="(item.terpakai ?? item.usedQuota ?? 0) + ' Hari'"></td>
+                <td class="px-4 py-3 text-center font-mono text-purple-400" x-text="(item.cutiSakit ?? 0) + ' Hari'"></td>
+                <td class="px-4 py-3 text-center font-mono text-teal-400 font-semibold" x-text="(item.cutiUmrah ?? 0) + ' Hari'"></td>
+                <td class="px-4 py-3 text-center font-mono text-pink-400 font-semibold" x-text="(item.cutiMelahirkan ?? 0) + ' Hari'"></td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-3 py-1 rounded-lg font-mono font-bold text-xs"
+                    :class="(item.sisaCuti ?? item.remainingQuota ?? 0) > 3 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : ((item.sisaCuti ?? item.remainingQuota ?? 0) > 0 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30')"
+                    x-text="(item.sisaCuti ?? item.remainingQuota ?? 0) + ' Hari'"></span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ADD/EDIT CUTI BERSAMA -->
+  <div x-show="showCutiBersamaModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" x-transition x-cloak>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-amber-400"></i>
+          <span x-text="cutiBersamaForm.id ? 'Edit Data Cuti Bersama' : 'Tambah Hari Cuti Bersama'">Tambah Hari Cuti Bersama</span>
+        </h3>
+        <button @click="showCutiBersamaModal = false" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <form @submit.prevent="submitCutiBersamaForm()" class="space-y-3 text-xs">
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-300">Tahun Periode *</label>
+          <select x-model="cutiBersamaForm.tahun" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500">
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-300">Nama Hari Libur / Cuti Bersama *</label>
+          <input type="text" x-model="cutiBersamaForm.namaHariLibur" required placeholder="Contoh: Hari Raya Idul Fitri 1447H"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="font-semibold text-slate-300">Tanggal *</label>
+            <input type="date" x-model="cutiBersamaForm.tanggal" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="font-semibold text-slate-300">Durasi (Hari) *</label>
+            <input type="number" min="1" max="14" x-model.number="cutiBersamaForm.jumlahHari" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-300">Potong Kuota Cuti Tahunan Karyawan? *</label>
+          <select x-model="cutiBersamaForm.potongCutiTahunan" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+            <option value="Ya">Ya (Memotong Kuota Tahunan Karyawan)</option>
+            <option value="Tidak">Tidak (Libur Nasional / Kebijakan Perusahaan)</option>
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-300">Keterangan / Catatan</label>
+          <textarea x-model="cutiBersamaForm.keterangan" rows="2" placeholder="Catatan tambahan..."
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"></textarea>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex justify-end gap-2">
+          <button type="button" @click="showCutiBersamaModal = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl">
+            Batal
+          </button>
+          <button type="submit" :disabled="isSavingCutiBersama" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20">
+            <span x-text="isSavingCutiBersama ? 'Menyimpan...' : 'Simpan Data'">Simpan Data</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL PROCESS APPROVAL CUTI -->
+  <div x-show="showCutiApprovalModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" x-transition x-cloak>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-user-check text-cyan-400"></i>
+          <span>Persetujuan Pengajuan Cuti</span>
+        </h3>
+        <button @click="showCutiApprovalModal = false" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <template x-if="selectedCutiForApproval">
+        <div class="space-y-3 text-xs">
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80 space-y-1">
+            <div class="flex justify-between">
+              <span class="text-slate-400">ID Pengajuan:</span>
+              <span class="font-mono text-cyan-400 font-bold" x-text="selectedCutiForApproval.cutiId"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Nama Karyawan:</span>
+              <span class="font-semibold text-slate-100" x-text="selectedCutiForApproval.namaKaryawan"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Jenis Cuti & Durasi:</span>
+              <span class="text-slate-200" x-text="selectedCutiForApproval.tipeCuti + ' (' + selectedCutiForApproval.jumlahHari + ' Hari)'"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Periode:</span>
+              <span class="text-slate-200" x-text="formatIndoDate(selectedCutiForApproval.tglMulai) + ' - ' + formatIndoDate(selectedCutiForApproval.tglSelesai)"></span>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-300">Pilih Keputusan Status</label>
+            <select x-model="approvalStatusInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+              <option value="Disetujui">Disetujui (Approved)</option>
+              <option value="Ditolak">Ditolak (Rejected)</option>
+              <option value="Pending">Pending (Ditangguhkan)</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-300">Catatan / Alasan Approval</label>
+            <textarea x-model="approvalCatatanInput" rows="2" placeholder="Tuliskan alasan persetujuan atau penolakan..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"></textarea>
+          </div>
+
+          <!-- Link Dokumen Surat / Pendukung ke Google Drive -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-brands fa-google-drive text-cyan-400"></i>
+                <span>Dokumen Surat Permohonan (Link Google Drive)</span>
+              </span>
+              <button type="button" @click="window.open('https://drive.google.com/drive/folders/1iQT4qOIAmxI90nEB7MvuFOCTVa9saRdl?usp=sharing', '_blank')"
+                class="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60 transition-colors"
+                title="Buka Folder Google Drive Dokumen Cuti">
+                <i class="fa-solid fa-folder-open text-xs"></i>
+                <span>Buka Folder Drive</span>
+              </button>
+            </label>
+            <div class="relative w-full">
+              <input type="text" x-model="approvalLinkDokumenInput" placeholder="Paste Link Google Drive Dokumen (https://drive.google.com/...)"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+              <div class="absolute left-3 top-2.5 text-cyan-400 text-xs">
+                <i class="fa-brands fa-google-drive"></i>
+              </div>
+            </div>
+            <template x-if="approvalLinkDokumenInput">
+              <div class="flex items-center gap-2 pt-1 text-[11px] text-emerald-400">
+                <i class="fa-solid fa-circle-check"></i>
+                <span class="font-medium text-slate-300">Link Drive Terpasang:</span>
+                <a :href="approvalLinkDokumenInput" target="_blank"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-lg text-xs font-semibold transition-all max-w-md truncate">
+                  <i class="fa-brands fa-google-drive text-cyan-400"></i>
+                  <span x-text="formatDocLinkName(approvalLinkDokumenInput) || 'Buka Link Dokumen'"></span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+                <button type="button" @click="approvalLinkDokumenInput = ''" class="p-1 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors ml-1 text-xs" title="Hapus Link Drive">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-2">
+        <button @click="showCutiApprovalModal = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl">
+          Batal
+        </button>
+        <button @click="submitCutiApproval()" class="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-cyan-500/20">
+          Simpan Keputusan
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

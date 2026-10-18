@@ -1,0 +1,288 @@
+<!-- ============================================================================ -->
+<!-- PEMBAYARAN & KWITANSI VIEW COMPONENT (JamaahPembayaranView.html)            -->
+<!-- ModulID: mod_pembayaran_jamaah (Kategori: Jamaah)                           -->
+<!-- Target Google Sheet: Data Jamaah (Pencatatan Riwayat Bayar & Cetak Kwitansi)-->
+<!-- ============================================================================ -->
+<div x-show="currentModule === 'mod_pembayaran_jamaah'" class="space-y-6" x-transition>
+
+  <!-- Header Bar Modul Standalone -->
+  <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
+    <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="flex items-center gap-3.5 z-10">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 p-0.5 shadow-lg shadow-emerald-500/20 shrink-0">
+        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-extrabold text-slate-100 tracking-tight">Pembayaran & Kwitansi Jamaah</h2>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">mod_pembayaran_jamaah</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">Pencatatan riwayat pembayaran, update sisa tagihan & penerbitan cetak kwitansi resmi</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 z-10">
+      <button @click="fetchJamaahData(true)" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all flex items-center gap-1.5 border border-slate-700">
+        <i class="fa-solid fa-rotate" :class="{'fa-spin': isLoading}"></i>
+        <span>Refresh Data</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Selector Jamaah dengan Pencarian Nama -->
+  <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+    <div class="space-y-1">
+      <label class="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
+        <i class="fa-solid fa-user-check text-emerald-400"></i>
+        <span>Pilih Jamaah Untuk Kelola Pembayaran:</span>
+      </label>
+      <p class="text-[11px] text-slate-400">Cari nama jamaah atau pilih langsung dari daftar jamaah terdaftar</p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto">
+      <!-- Input Search Nama Jamaah -->
+      <div class="relative w-full sm:w-60">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-emerald-400">
+          <i class="fa-solid fa-magnifying-glass text-xs"></i>
+        </span>
+        <input type="text" x-model="searchJamaahQuery" @input="searchKeyword = searchJamaahQuery; if (typeof onSearchInputChange === 'function') onSearchInputChange()" placeholder="Cari Nama Jamaah / ID..."
+          class="w-full pl-8 pr-8 py-2 bg-slate-950 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition-all shadow-inner">
+        <button type="button" x-show="searchJamaahQuery" @click="searchJamaahQuery = ''; searchKeyword = ''; if (typeof onSearchInputChange === 'function') onSearchInputChange()" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-500 hover:text-slate-300">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- Select Dropdown Jamaah (Filtered) -->
+      <div class="w-full sm:w-72">
+        <select x-model="selectedJamaahIdForPayment" @change="onPaymentJamaahChange()" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-emerald-300 font-bold focus:outline-none focus:border-emerald-400 cursor-pointer">
+          <option value="">-- Pilih Nama Jamaah (<span x-text="typeof filteredJamaahListForPayment === 'function' ? filteredJamaahListForPayment().length : (jamaahList || []).length"></span>) --</option>
+          <template x-for="j in (typeof filteredJamaahListForPayment === 'function' ? filteredJamaahListForPayment() : jamaahList)" :key="j.id || j['ID Jamaah']">
+            <option :value="j.id || j['ID Jamaah']" x-text="(j.namaLengkap || j.nama || 'Jamaah') + ' (' + (j.jenisPaket || 'Paket') + ' - ' + (j.id || j['ID Jamaah'] || j.noKtp) + ')'"></option>
+          </template>
+        </select>
+      </div>
+
+      <template x-if="selectedJamaahForPayment">
+        <div class="flex items-center gap-2 shrink-0">
+          <button @click="printKwitansi(selectedJamaahForPayment)" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+            <i class="fa-solid fa-receipt"></i>
+            <span>Cetak Kwitansi</span>
+          </button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Payment Detail & Form Input -->
+  <template x-if="selectedJamaahForPayment">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Card Information & Status Bayar -->
+      <div class="lg:col-span-1 space-y-4">
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Ringkasan Tagihan</h3>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold" :class="selectedJamaahForPayment.status === 'Lunas' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'" x-text="selectedJamaahForPayment.status || 'Terdaftar'"></span>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-400">Nama Jamaah:</span>
+              <span class="font-bold text-slate-100" x-text="selectedJamaahForPayment.namaLengkap"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-400">Jenis Paket:</span>
+              <span class="font-semibold text-emerald-400" x-text="selectedJamaahForPayment.jenisPaket || '-'"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-400">Tipe Kamar:</span>
+              <span class="font-semibold text-amber-300" x-text="selectedJamaahForPayment.tipeKamar || 'Quad'"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-400">Estimasi Harga Paket:</span>
+              <span class="font-extrabold text-slate-100 font-mono" x-text="formatRupiah(selectedJamaahForPayment.totalHarga || selectedJamaahForPayment.jumlahHarusDibayar || (typeof calculateJamaahPaymentSummary === 'function' ? calculateJamaahPaymentSummary().estimasiPaket : 0))"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-400">Metode Bayar:</span>
+              <span class="text-slate-200" x-text="selectedJamaahForPayment.caraPembayaran || 'Tunai / Cash'"></span>
+            </div>
+
+            <!-- Link Lihat Bukti Transfer pada Kartu Ringkasan -->
+            <template x-if="selectedJamaahForPayment && (selectedJamaahForPayment.uploadBuktiTransfer || selectedJamaahForPayment['Upload Bukti Transfer'])">
+              <div class="pt-3 border-t border-slate-800/80">
+                <a :href="selectedJamaahForPayment.uploadBuktiTransfer || selectedJamaahForPayment['Upload Bukti Transfer']" target="_blank" rel="noopener noreferrer"
+                  class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 via-teal-500/20 to-emerald-500/20 hover:from-cyan-500/30 hover:to-emerald-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95">
+                  <i class="fa-brands fa-google-drive text-cyan-400 text-sm"></i>
+                  <span>Lihat Bukti Transfer Jamaah</span>
+                </a>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Input Pembayaran Baru & History Table -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <i class="fa-solid fa-plus-circle text-emerald-400"></i>
+              <span>Input Pembayaran Baru</span>
+            </h3>
+          </div>
+
+          <form @submit.prevent="submitNewPayment()" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Tanggal Pembayaran (DTPicker)</label>
+              <input type="date" x-model="paymentForm.tanggalBayar" required class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:border-emerald-400 focus:outline-none">
+              <span class="text-[10px] text-emerald-400 font-mono mt-1 flex items-center gap-1" x-show="paymentForm.tanggalBayar">
+                <i class="fa-regular fa-calendar-check"></i> <span x-text="formatDateIndoStr(paymentForm.tanggalBayar)"></span>
+              </span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Metode Pembayaran</label>
+              <select x-model="paymentForm.metode" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:border-emerald-400 focus:outline-none">
+                <option value="Transfer Bank">Transfer Bank</option>
+                <option value="Tunai / Cash">Tunai / Cash</option>
+                <option value="Debit Card">Debit Card</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Jumlah Pembayaran (Rp)</label>
+              <input type="number" x-model="paymentForm.nominal" required placeholder="0" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-emerald-400 font-mono font-bold focus:border-emerald-400 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Keterangan / Catatan</label>
+              <input type="text" x-model="paymentForm.catatan" placeholder="Cth: Pembayaran DP 1 / Pelunasan" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:border-emerald-400 focus:outline-none">
+            </div>
+
+            <!-- Upload Bukti Transfer dari Drive Lokal -->
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                <span class="flex items-center gap-1.5 text-cyan-300">
+                  <i class="fa-solid fa-cloud-arrow-up text-cyan-400 text-xs"></i>
+                  <span>Upload Bukti Transfer (Drive Lokal)</span>
+                </span>
+              </label>
+              <div class="relative border border-dashed rounded-xl p-3 text-center transition-all cursor-pointer bg-slate-950 hover:bg-slate-900 flex flex-col items-center justify-center gap-1.5"
+                :class="paymentFileSelected ? 'border-emerald-500/60 bg-emerald-950/20' : 'border-slate-800 hover:border-cyan-400/60'"
+                @click="$refs.paymentFileInputStandalone ? $refs.paymentFileInputStandalone.click() : null">
+                
+                <input type="file" x-ref="paymentFileInputStandalone" @change="handlePaymentFileSelect($event)" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+
+                <template x-if="!paymentFileSelected">
+                  <div class="space-y-1">
+                    <i class="fa-solid fa-file-arrow-up text-cyan-400 text-lg"></i>
+                    <p class="text-[11px] font-bold text-slate-200">Klik di sini untuk memilih Bukti Transfer dari Drive Lokal</p>
+                    <p class="text-[10px] text-slate-400">Format Nama di Drive: "ID Kwitansi - Nama Jamaah.ext" (Folder: 1lHO7hPfyj6-512vovUNfvVcLbLQhTWIv)</p>
+                  </div>
+                </template>
+
+                <template x-if="paymentFileSelected">
+                  <div class="flex items-center justify-between w-full bg-slate-900 p-2 rounded-lg border border-emerald-500/40 text-xs">
+                    <div class="flex items-center gap-2 truncate">
+                      <i class="fa-solid fa-file-invoice text-emerald-400 text-sm"></i>
+                      <span class="font-bold text-emerald-300 truncate" x-text="paymentFileSelected.name"></span>
+                    </div>
+                    <button type="button" @click.stop="paymentFileSelected = null" class="text-rose-400 hover:text-rose-300 text-[10px] font-bold underline shrink-0 ml-2">
+                      Hapus
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div class="sm:col-span-2 flex justify-end">
+              <button type="submit" :disabled="isSubmitting" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-check" :class="{'fa-spin': isSubmitting}"></i>
+                <span>Simpan Transaksi Pembayaran</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Database History Pembayaran Table -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+              <span>Database History Pembayaran</span>
+            </h4>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-950 border border-slate-700 text-cyan-300 font-mono"
+              x-text="(currentJamaahPaymentHistory || []).length + ' Transaksi'"></span>
+          </div>
+
+          <!-- Table Container -->
+          <div class="overflow-x-auto border border-slate-800 rounded-xl">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
+                  <th class="p-2.5 font-semibold">No. Kwitansi</th>
+                  <th class="p-2.5 font-semibold">Tanggal</th>
+                  <th class="p-2.5 font-semibold">Nominal (Rp)</th>
+                  <th class="p-2.5 font-semibold">Tipe & Metode</th>
+                  <th class="p-2.5 font-semibold text-center">Aksi Kwitansi & Bukti TF</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60">
+                <template x-for="item in (typeof filteredCurrentJamaahPaymentHistory === 'function' ? filteredCurrentJamaahPaymentHistory() : (currentJamaahPaymentHistory || []))" :key="item.idKwitansi">
+                  <tr class="hover:bg-slate-900/50 transition-colors">
+                    <td class="p-2.5 font-mono text-emerald-400 font-bold text-[11px]" x-text="item.idKwitansi"></td>
+                    <td class="p-2.5 text-slate-300 text-[11px]" x-text="item.tglBayar || item.timestamp || '-'"></td>
+                    <td class="p-2.5 font-mono font-extrabold text-slate-100 text-[11px]" x-text="formatRupiah(item.jumlahPembayaran || item.nominal || 0)"></td>
+                    <td class="p-2.5">
+                      <div class="text-[11px] font-semibold text-slate-200" x-text="item.tipePembayaran || item.tipe || 'Pembayaran'"></div>
+                      <div class="text-[10px] text-slate-400" x-text="(item.metodePembayaran || item.metode || 'Transfer') + (item.namaBank ? ' (' + item.namaBank + ')' : '')"></div>
+                    </td>
+                    <td class="p-2.5 text-center">
+                      <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                        <!-- Icon Lihat Bukti Transfer -->
+                        <template x-if="item.uploadBuktiTransfer || item['Upload Bukti Transfer']">
+                          <a :href="item.uploadBuktiTransfer || item['Upload Bukti Transfer']" target="_blank" rel="noopener noreferrer" 
+                            title="Lihat Bukti Transfer di Google Drive"
+                            class="px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95">
+                            <i class="fa-brands fa-google-drive text-cyan-400"></i>
+                            <span>Lihat Bukti TF</span>
+                          </a>
+                        </template>
+
+                        <button type="button" @click="openKwitansiModal ? openKwitansiModal(item) : (printKwitansi ? printKwitansi(item) : null)" title="Cetak Kwitansi"
+                          class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95">
+                          <i class="fa-solid fa-receipt"></i>
+                          <span>Kwitansi</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+
+                <template x-if="!currentJamaahPaymentHistory || currentJamaahPaymentHistory.length === 0">
+                  <tr>
+                    <td colspan="5" class="p-6 text-center text-slate-500 italic text-xs">
+                      Belum ada riwayat pembayaran tercatat untuk jamaah ini.
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </template>
+
+  <template x-if="!selectedJamaahForPayment">
+    <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-12 text-center text-slate-500">
+      <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-600"></i>
+      <p class="text-xs">Silakan pilih nama jamaah dari dropdown di atas untuk mencatat pembayaran atau mencetak kwitansi.</p>
+    </div>
+  </template>
+
+</div>

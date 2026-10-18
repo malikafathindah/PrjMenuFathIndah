@@ -1,0 +1,311 @@
+<div x-show="currentModule === 'mod_estimasi_keberangkatan'" class="h-[calc(100vh-140px)] flex flex-col gap-4 p-4 text-slate-300" x-data="estimasiManager()" x-init="initData()">
+   
+   <!-- List Jamaah & Copy-Paste Helper -->
+   <div class="w-full bg-slate-900 rounded-xl shadow-lg border border-slate-700 flex flex-col h-[calc(100vh-140px)]">
+      <div class="bg-slate-800 border-b border-slate-700 flex justify-between items-center p-3">
+         <h3 class="text-emerald-400 font-bold uppercase tracking-wider text-sm flex items-center gap-2">
+            <i class="fa-solid fa-users"></i> Data Jamaah & Estimasi Keberangkatan
+         </h3>
+         <div class="flex items-center gap-2">
+            <button @click="openHistoryModal()" class="bg-slate-700 hover:bg-slate-600 text-amber-300 hover:text-amber-200 font-bold py-1.5 px-3 rounded-lg border border-amber-500/30 flex items-center gap-1.5 transition-all text-xs">
+               <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> Riwayat History
+            </button>
+            <button @click="bukaWebKemenag()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-1.5 px-4 rounded-lg shadow-lg shadow-emerald-900/50 flex items-center gap-2 transition-all transform hover:scale-105 text-xs">
+               <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Website Kemenag
+            </button>
+         </div>
+      </div>
+
+      <div class="p-4 flex flex-col gap-3 flex-1 overflow-hidden">
+         <div class="flex flex-col md:flex-row gap-3">
+            <div class="relative flex-1">
+               <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+               <input type="text" x-model="search" placeholder="Cari Nama / No Porsi..." class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+            </div>
+            <select x-model="filterKanwil" class="w-full md:w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+               <option value="">-- Semua Kanwil --</option>
+               <template x-for="k in kanwilList" :key="k">
+                  <option :value="k" x-text="k"></option>
+               </template>
+            </select>
+         </div>
+         
+         <!-- Peringatan Cara Pakai -->
+         <div class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-lg text-[11px] text-blue-200 leading-relaxed flex items-center justify-between">
+            <div>
+               <i class="fa-solid fa-circle-info mr-1"></i> <strong>Cara Pakai:</strong> 1. Buka Web Kemenag | 2. Klik Jamaah untuk otomatis <b>Copy No. Porsi</b> | 3. <b>Paste</b> di web Kemenag | 4. Ketik hasilnya di kolom Estimasi lalu klik Simpan.
+            </div>
+            <span class="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded ml-2 whitespace-nowrap">
+               <i class="fa-solid fa-shield-halved"></i> Auto-History Aktif
+            </span>
+         </div>
+
+         <div class="flex-1 overflow-y-auto space-y-2 mt-2 pr-1 ht-table-scroll">
+            <!-- Loading State -->
+            <div x-show="isLoading" class="text-center text-slate-500 py-10">
+               <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-emerald-500"></i>
+               <p class="text-sm">Memuat data jamaah...</p>
+            </div>
+
+            <!-- List Item -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+               <template x-for="item in filteredList" :key="item.id">
+                  <div class="bg-slate-800 p-3 rounded-lg border transition-all cursor-pointer shadow-sm relative flex flex-col justify-between"
+                       :class="selectedRowId === item.id ? 'border-emerald-500 bg-slate-700/50' : 'border-slate-700 hover:border-emerald-500/50 hover:bg-slate-800/80'"
+                       @click="copyPorsi(item.NoPorsi, item.id)">
+                     
+                     <div>
+                        <div class="font-bold text-slate-200 text-sm mb-1" x-text="item.Nama"></div>
+                        <div class="text-[11px] text-slate-400 mb-2">
+                           <span x-text="'Kanwil: ' + (item.Kanwil || '-')"></span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mb-1 bg-slate-900/50 p-2 rounded">
+                           <div class="text-emerald-400 font-mono text-xs font-bold" x-text="'Porsi: ' + (item.NoPorsi || '-')"></div>
+                           <button class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] text-white flex items-center gap-1">
+                              <i class="fa-regular fa-copy"></i> Copy
+                           </button>
+                        </div>
+                     </div>
+                     
+                     <div class="mt-2 flex items-center justify-between">
+                        <button type="button" @click.stop="openHistoryModal(item.NoPorsi, item.Nama)" class="text-[10px] text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors">
+                           <i class="fa-solid fa-clock-rotate-left"></i> Riwayat
+                        </button>
+                        <span class="text-amber-400 font-bold text-xs" x-show="item.EstimasiBerangkat" x-text="'Est: ' + item.EstimasiBerangkat"></span>
+                     </div>
+                     
+                     <!-- Form input untuk simpan estimasi jika ini diklik -->
+                     <div class="mt-3 pt-3 border-t border-slate-600 flex gap-2 items-center" x-show="selectedRowId === item.id" @click.stop>
+                        <input type="text" x-model="inputEstimasi" placeholder="Contoh: 2026" class="flex-1 bg-slate-900 border border-slate-600 focus:border-emerald-500 rounded px-3 py-1.5 text-xs text-white outline-none">
+                        <button @click="saveEstimasi(item.id)" :disabled="isSaving" class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-1.5 rounded text-xs font-bold transition-all shadow shadow-emerald-900/50">
+                           <i class="fa-solid fa-save" :class="isSaving ? 'fa-spin' : ''"></i> Simpan
+                        </button>
+                     </div>
+                  </div>
+               </template>
+            </div>
+            
+            <div x-show="!isLoading && filteredList.length === 0" class="text-center text-slate-500 py-10 text-xs w-full">
+               Tidak ada data ditemukan.
+            </div>
+         </div>
+      </div>
+   </div>
+
+   <!-- MODAL RIWAYAT HISTORY ESTIMASI -->
+   <div x-show="showHistoryModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm" @click.self="showHistoryModal = false">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-4xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate__animated animate__fadeInUp animate__faster">
+         <!-- Modal Header -->
+         <div class="bg-slate-800/90 border-b border-slate-700 px-5 py-3.5 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+               <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+               </div>
+               <div>
+                  <h3 class="font-bold text-sm text-slate-100">Riwayat Perubahan Estimasi Keberangkatan</h3>
+                  <p class="text-[11px] text-slate-400" x-text="historyFilterPorsi ? ('Filter: No Porsi ' + historyFilterPorsi + ' (' + historyFilterNama + ')') : 'Database Sheet: HistoryEstimasi (Seluruh Jamaah)'"></p>
+               </div>
+            </div>
+            <div class="flex items-center gap-2">
+               <button x-show="historyFilterPorsi" @click="historyFilterPorsi = ''; historyFilterNama = ''; fetchHistory();" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">
+                  Tampilkan Semua
+               </button>
+               <button @click="showHistoryModal = false" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                  <i class="fa-solid fa-times text-lg"></i>
+               </button>
+            </div>
+         </div>
+
+         <!-- Modal Body -->
+         <div class="p-4 flex-1 overflow-y-auto ht-table-scroll">
+            <div x-show="isLoadingHistory" class="text-center py-12 text-slate-400">
+               <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-amber-400"></i>
+               <p class="text-xs">Memuat data riwayat...</p>
+            </div>
+
+            <div x-show="!isLoadingHistory && historyList.length === 0" class="text-center py-12 text-slate-500">
+               <i class="fa-regular fa-folder-open text-3xl mb-2"></i>
+               <p class="text-xs">Belum ada riwayat perubahan estimasi tercatat.</p>
+            </div>
+
+            <div x-show="!isLoadingHistory && historyList.length > 0" class="overflow-x-auto">
+               <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                     <tr class="bg-slate-800 text-slate-300 uppercase tracking-wider text-[10px] border-b border-slate-700">
+                        <th class="p-2.5 font-semibold">Tgl Estimasi</th>
+                        <th class="p-2.5 font-semibold">Waktu Update</th>
+                        <th class="p-2.5 font-semibold">No. Porsi</th>
+                        <th class="p-2.5 font-semibold">Nama Jamaah</th>
+                        <th class="p-2.5 font-semibold">Estimasi Lama</th>
+                        <th class="p-2.5 font-semibold">Estimasi Baru</th>
+                        <th class="p-2.5 font-semibold">Petugas</th>
+                     </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800">
+                     <template x-for="(h, idx) in historyList" :key="idx">
+                        <tr class="hover:bg-slate-800/50 text-slate-300">
+                           <td class="p-2.5 font-mono text-cyan-400" x-text="h.TglEstimasi || '-'"></td>
+                           <td class="p-2.5 text-slate-400 font-mono text-[11px]" x-text="h.WaktuUpdate || '-'"></td>
+                           <td class="p-2.5 font-bold font-mono text-emerald-400" x-text="h.NoPorsi || '-'"></td>
+                           <td class="p-2.5 font-medium text-slate-200" x-text="h.Nama || '-'"></td>
+                           <td class="p-2.5">
+                              <span class="bg-rose-950/60 text-rose-400 border border-rose-800/40 px-2 py-0.5 rounded font-mono font-bold" x-text="h.EstimasiLama || '-'"></span>
+                           </td>
+                           <td class="p-2.5">
+                              <span class="bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded font-mono font-bold" x-text="h.EstimasiKeberangkatan || '-'"></span>
+                           </td>
+                           <td class="p-2.5 text-slate-400" x-text="h.Petugas || 'Admin'"></td>
+                        </tr>
+                     </template>
+                  </tbody>
+               </table>
+            </div>
+         </div>
+
+         <!-- Modal Footer -->
+         <div class="bg-slate-800/60 border-t border-slate-700 px-5 py-2.5 flex justify-between items-center text-xs text-slate-400">
+            <div>Total: <span class="font-bold text-slate-200" x-text="historyList.length"></span> record riwayat</div>
+            <button @click="showHistoryModal = false" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-1.5 rounded-lg text-xs font-semibold">Tutup</button>
+         </div>
+      </div>
+   </div>
+</div>
+
+<script>
+function estimasiManager() {
+  return {
+    list: [],
+    search: '',
+    filterKanwil: '',
+    kanwilList: [],
+    selectedRowId: null,
+    inputEstimasi: '',
+    isLoading: false,
+    isSaving: false,
+    
+    // State History
+    showHistoryModal: false,
+    historyList: [],
+    isLoadingHistory: false,
+    historyFilterPorsi: '',
+    historyFilterNama: '',
+
+    // State History
+    showHistoryModal: false,
+    historyList: [],
+    isLoadingHistory: false,
+    historyFilterPorsi: '',
+    historyFilterNama: '',
+    
+    initData() {
+       this.fetchData();
+    },
+    
+    fetchData() {
+       this.isLoading = true;
+       const token = window.sessionToken || '';
+       google.script.run
+         .withSuccessHandler(res => {
+            this.isLoading = false;
+            if(res && Array.isArray(res)) {
+               this.list = res;
+               const kSet = new Set();
+               res.forEach(r => { if(r.Kanwil && String(r.Kanwil).trim() !== '') kSet.add(String(r.Kanwil).trim()); });
+               this.kanwilList = Array.from(kSet).sort();
+            }
+         })
+         .withFailureHandler(err => {
+            this.isLoading = false;
+            console.error(err);
+         })
+         .apiGetEstimasiList(token);
+    },
+    
+    get filteredList() {
+       return this.list.filter(item => {
+          const matchSearch = (String(item.Nama || '').toLowerCase().includes(this.search.toLowerCase()) || 
+                               String(item.NoPorsi || '').toLowerCase().includes(this.search.toLowerCase()));
+          const matchKanwil = this.filterKanwil ? String(item.Kanwil).trim() === this.filterKanwil : true;
+          return matchSearch && matchKanwil;
+       });
+    },
+    
+    copyPorsi(porsi, id) {
+       // Update UI state
+       this.selectedRowId = id;
+       const item = this.list.find(r => r.id === id);
+       if(item) {
+          this.inputEstimasi = item.EstimasiBerangkat || '';
+       }
+       
+       if(!porsi) return;
+       
+       // Try copy
+       navigator.clipboard.writeText(porsi).then(() => {
+          Swal.fire({title: 'Nomor Porsi Disalin', text: porsi, icon: 'success', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false, background: '#0f172a', color: '#34d399'});
+       }).catch(err => {
+          console.error("Gagal copy: ", err);
+       });
+    },
+    
+    saveEstimasi(id) {
+       const token = window.sessionToken || '';
+       const val = String(this.inputEstimasi || '').trim(); // Menghilangkan spasi kiri dan kanan
+       
+       if (!val) {
+           Swal.fire({title: 'Peringatan', text: 'Estimasi keberangkatan tidak boleh kosong', icon: 'warning', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false, background: '#0f172a', color: '#fbbf24'});
+           return;
+       }
+
+       this.isSaving = true;
+       google.script.run
+         .withSuccessHandler(res => {
+            this.isSaving = false;
+            if (res.success) {
+                Swal.fire({title: 'Tersimpan', text: res.message, icon: 'success', toast: true, position: 'top-end', timer: 2500, showConfirmButton: false, background: '#0f172a', color: '#34d399'});
+                const item = this.list.find(r => r.id === id);
+                if(item) item.EstimasiBerangkat = val;
+            } else {
+                Swal.fire({title: 'Gagal', text: res.message, icon: 'error', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false, background: '#0f172a', color: '#f87171'});
+            }
+         })
+         .withFailureHandler(err => {
+            this.isSaving = false;
+            Swal.fire({title: 'Gagal', text: err.message, icon: 'error', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false, background: '#0f172a', color: '#f87171'});
+         })
+         .apiSaveEstimasi(token, id, val);
+    },
+
+    openHistoryModal(noPorsi = '', nama = '') {
+       this.historyFilterPorsi = noPorsi || '';
+       this.historyFilterNama = nama || '';
+       this.showHistoryModal = true;
+       this.fetchHistory();
+    },
+
+    fetchHistory() {
+       this.isLoadingHistory = true;
+       const token = window.sessionToken || '';
+       google.script.run
+         .withSuccessHandler(res => {
+            this.isLoadingHistory = false;
+            if (res && res.success) {
+               this.historyList = res.data || [];
+            } else {
+               this.historyList = [];
+            }
+         })
+         .withFailureHandler(err => {
+            this.isLoadingHistory = false;
+            console.error("Gagal memuat history:", err);
+         })
+         .apiGetHistoryEstimasiList(token, this.historyFilterPorsi);
+    },
+    
+    bukaWebKemenag() {
+       window.open('https://haji.go.id/estimasi-keberangkatan', '_blank', 'width=800,height=700,left=100,top=100');
+    }
+  }
+}
+</script>

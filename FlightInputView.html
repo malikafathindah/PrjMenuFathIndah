@@ -1,0 +1,451 @@
+<!-- ============================================================================ -->
+<!-- MODUL INPUT DATA PENERBANGAN UMRAH & BLOCK SEAT (mod_input_flight)           -->
+<!-- ============================================================================ -->
+<div x-show="currentModule === 'mod_input_flight' || currentModule === 'mod_flight' || currentModule === 'mod_penerbangan' || isFlightInputModule(currentModule, currentModuleName)" class="space-y-6 w-full" x-transition>
+
+  <!-- TOP BANNER HEADER MODUL -->
+  <div
+    class="bg-gradient-to-r from-cyan-900/40 via-slate-900 to-slate-900 border border-cyan-500/30 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div
+        class="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300 text-xl font-bold shadow-inner">
+        <i class="fa-solid fa-plane-departure"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-extrabold text-slate-100 uppercase tracking-wide flex items-center gap-2">
+          <span>Modul Input Data Penerbangan Umrah</span>
+          <span
+            class="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold rounded-md">v1.0</span>
+        </h2>
+        <p class="text-xs text-slate-400">Manajemen Penerbangan, Jadwal Rute Outbound/Inbound, Alokasi Block Seat &
+          Harga Tiket Kontrak</p>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS (FORM VS DAFTAR LIST) -->
+    <div class="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
+      <button type="button" @click="flightTab = 'form'"
+        :class="flightTab === 'form' ? 'bg-cyan-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2 rounded-lg text-xs transition-all flex items-center gap-2">
+        <i class="fa-solid fa-pen-to-square"></i>
+        <span>Form Input Flight</span>
+      </button>
+      <button type="button" @click="flightTab = 'list'; loadFlightData()"
+        :class="flightTab === 'list' ? 'bg-cyan-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'"
+        class="px-4 py-2 rounded-lg text-xs transition-all flex items-center gap-2">
+        <i class="fa-solid fa-table-list"></i>
+        <span>Daftar Flight & Block Seat</span>
+        <span
+          class="px-1.5 py-0.2 bg-slate-900 text-cyan-300 rounded text-[10px] font-mono font-bold border border-cyan-500/30"
+          x-text="(flightList || []).length"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 1: FORMULIR INPUT / EDIT FLIGHT -->
+  <template x-if="flightTab === 'form'">
+    <form @submit.prevent="submitFlightForm()" class="space-y-6">
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- KARTU 1: INFORMASI GROUP & MASKAPAI -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
+          <h3
+            class="text-xs font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2.5">
+            <i class="fa-solid fa-passport"></i>
+            <span>1. Informasi Flight Group & Maskapai</span>
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <!-- Kode PNR -->
+            <div class="sm:col-span-2">
+              <label class="block text-slate-400 font-semibold mb-1">Kode Block Seat / PNR <span
+                  class="text-rose-400">*</span></label>
+              <input type="text" x-model="flightForm.pnrCode" required placeholder="cth: PNR-GA890-AUG2026"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-cyan-300 font-mono font-bold focus:border-cyan-400">
+            </div>
+
+            <!-- Maskapai -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Maskapai (Airline) <span
+                  class="text-rose-400">*</span></label>
+              <select x-model="flightForm.maskapai" required
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-bold focus:border-cyan-400">
+                <option value="">-- Pilih Maskapai --</option>
+                <option value="Garuda Indonesia">Garuda Indonesia</option>
+                <option value="Saudia Airlines">Saudia Airlines</option>
+                <option value="Lion Air">Lion Air</option>
+                <option value="Batik Air">Batik Air</option>
+                <option value="Oman Air">Oman Air</option>
+                <option value="Qatar Airways">Qatar Airways</option>
+                <option value="Emirates">Emirates</option>
+                <option value="Etihad Airways">Etihad Airways</option>
+                <option value="Malaysia Airlines">Malaysia Airlines</option>
+                <option value="AirAsia">AirAsia</option>
+                <option value="FlyNas">FlyNas</option>
+              </select>
+            </div>
+
+            <!-- Tipe Penerbangan -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Tipe Penerbangan</label>
+              <select x-model="flightForm.tipePenerbangan"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-emerald-300 font-bold focus:border-cyan-400">
+                <option value="Direct">Direct (Langsung)</option>
+                <option value="Transit">Transit (Persinggahan)</option>
+              </select>
+            </div>
+
+            <!-- Jenis Layanan -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Jenis Layanan</label>
+              <select x-model="flightForm.jenisLayanan"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-purple-300 font-bold focus:border-cyan-400">
+                <option value="Reguler">Reguler Flight</option>
+                <option value="Charter">Charter Flight</option>
+              </select>
+            </div>
+
+            <!-- Status Block Seat -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Status Block Seat</label>
+              <select x-model="flightForm.statusSeat"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-amber-300 font-bold focus:border-cyan-400">
+                <option value="Available">Available (Tersedia)</option>
+                <option value="Deposit Paid">Deposit Paid</option>
+                <option value="Issued">Issued / Lock</option>
+                <option value="Closed">Closed / Sold Out</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- KARTU 2: ALOKASI SEAT, INVENTORY & BIAYA -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
+          <h3
+            class="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2.5">
+            <i class="fa-solid fa-coins"></i>
+            <span>2. Alokasi Seat & Harga Kontrak</span>
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <!-- Jumlah Block Seat -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Jumlah Alokasi Block Seat</label>
+              <div class="relative">
+                <input type="number" min="1" x-model.number="flightForm.blockSeatTotal" placeholder="45"
+                  class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-emerald-300 font-mono font-bold focus:border-cyan-400">
+                <span class="absolute right-3 top-2 text-slate-500 font-sans font-bold">Pax</span>
+              </div>
+            </div>
+
+            <!-- Harga Beli Tiket per Pax -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Harga Beli Tiket / Pax (IDR)</label>
+              <input type="text" :value="formatInputIDR(flightForm.hargaBeliTicket)"
+                @input="flightForm.hargaBeliTicket = parseInputIDR($event.target.value)" placeholder="16.900.000"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-amber-300 font-mono font-bold text-right focus:border-cyan-400">
+            </div>
+
+            <!-- Free Bagasi -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Free Bagasi</label>
+              <input type="text" x-model="flightForm.freeBagasi" placeholder="30 Kg Bagasi + 7 Kg Kabin"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:border-cyan-400">
+            </div>
+
+            <!-- Air Zamzam -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Air Zamzam</label>
+              <select x-model="flightForm.airZamzam"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-cyan-300 font-bold focus:border-cyan-400">
+                <option value="Free 5 Liter">Free 5 Liter</option>
+                <option value="Free 10 Liter">Free 10 Liter</option>
+                <option value="Tidak Ada">Tidak Ada / Opsional</option>
+              </select>
+            </div>
+
+            <!-- Catatan -->
+            <div class="sm:col-span-2">
+              <label class="block text-slate-400 font-semibold mb-1">Catatan Tambahan Penerbangan</label>
+              <input type="text" x-model="flightForm.catatan"
+                placeholder="cth: Termasuk Meals in-flight & Transit Hotel di Kuala Lumpur"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-300 focus:border-cyan-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- KARTU 3: LEG 1 PERJALANAN KEBERANGKATAN (OUTBOUND) -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
+          <h3
+            class="text-xs font-extrabold text-cyan-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-plane-departure text-cyan-400"></i>
+              <span>3. Leg 1: Outbound (Keberangkatan)</span>
+            </span>
+            <span
+              class="px-2 py-0.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[10px] font-mono rounded">Perjalanan
+              Pergi</span>
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <!-- No Flight Outbound -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Nomor Flight Outbound</label>
+              <input type="text" x-model="flightForm.noFlightOut" placeholder="cth: GA 980 / SV 825"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-cyan-300 font-mono font-bold focus:border-cyan-400">
+            </div>
+
+            <!-- Bandara Asal (Origin) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Bandara Asal (Origin)</label>
+              <select x-model="flightForm.originOut"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-semibold focus:border-cyan-400">
+                <option value="CGK">CGK - Jakarta (Soekarno-Hatta)</option>
+                <option value="SUB">SUB - Surabaya (Juanda)</option>
+                <option value="KNO">KNO - Medan (Kualanamu)</option>
+                <option value="UPG">UPG - Makassar (Sultan Hasanuddin)</option>
+                <option value="BTH">BTH - Batam (Hang Nadim)</option>
+                <option value="PDG">PDG - Padang (Minangkabau)</option>
+                <option value="KERTJ">KJT - Kertajati (Majalengka)</option>
+              </select>
+            </div>
+
+            <!-- Bandara Transit Outbound -->
+            <div x-show="flightForm.tipePenerbangan === 'Transit'">
+              <label class="block text-amber-300 font-semibold mb-1">Bandara Transit Outbound</label>
+              <input type="text" x-model="flightForm.transitOut" placeholder="cth: KUL (Kuala Lumpur) / MCT (Muscat)"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-amber-300 font-bold focus:border-cyan-400">
+            </div>
+
+            <!-- Bandara Tujuan (Dest) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Bandara Tujuan (Destination)</label>
+              <select x-model="flightForm.destOut"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-emerald-300 font-bold focus:border-cyan-400">
+                <option value="MED">MED - Madinah (Prince Mohammad bin Abdulaziz)</option>
+                <option value="JED">JED - Jeddah (King Abdulaziz)</option>
+              </select>
+            </div>
+
+            <!-- ETD Outbound (Keberangkatan) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">ETD Outbound (Tanggal & Jam Dep)</label>
+              <input type="datetime-local" x-model="flightForm.etdOut"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 font-mono text-xs focus:border-cyan-400">
+            </div>
+
+            <!-- ETA Outbound (Kedatangan) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">ETA Outbound (Tanggal & Jam Arrv)</label>
+              <input type="datetime-local" x-model="flightForm.etaOut"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 font-mono text-xs focus:border-cyan-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- KARTU 4: LEG 2 PERJALANAN KEPULANGAN (INBOUND) -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
+          <h3
+            class="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-plane-arrival text-amber-400"></i>
+              <span>4. Leg 2: Inbound (Kepulangan)</span>
+            </span>
+            <span
+              class="px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-mono rounded">Perjalanan
+              Pulang</span>
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <!-- No Flight Inbound -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Nomor Flight Inbound</label>
+              <input type="text" x-model="flightForm.noFlightIn" placeholder="cth: GA 981 / SV 826"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-amber-300 font-mono font-bold focus:border-cyan-400">
+            </div>
+
+            <!-- Bandara Asal Kepulangan (Origin) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Bandara Kepulangan (Origin)</label>
+              <select x-model="flightForm.originIn"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-emerald-300 font-bold focus:border-cyan-400">
+                <option value="JED">JED - Jeddah (King Abdulaziz)</option>
+                <option value="MED">MED - Madinah (Prince Mohammad bin Abdulaziz)</option>
+              </select>
+            </div>
+
+            <!-- Bandara Transit Inbound -->
+            <div x-show="flightForm.tipePenerbangan === 'Transit'">
+              <label class="block text-amber-300 font-semibold mb-1">Bandara Transit Inbound</label>
+              <input type="text" x-model="flightForm.transitIn" placeholder="cth: KUL (Kuala Lumpur) / MCT (Muscat)"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-amber-300 font-bold focus:border-cyan-400">
+            </div>
+
+            <!-- Bandara Tujuan Akhir (Dest) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Bandara Tujuan Akhir (Destination)</label>
+              <select x-model="flightForm.destIn"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-semibold focus:border-cyan-400">
+                <option value="CGK">CGK - Jakarta (Soekarno-Hatta)</option>
+                <option value="SUB">SUB - Surabaya (Juanda)</option>
+                <option value="KNO">KNO - Medan (Kualanamu)</option>
+                <option value="UPG">UPG - Makassar (Sultan Hasanuddin)</option>
+                <option value="BTH">BTH - Batam (Hang Nadim)</option>
+                <option value="PDG">PDG - Padang (Minangkabau)</option>
+                <option value="KJT">KJT - Kertajati (Majalengka)</option>
+              </select>
+            </div>
+
+            <!-- ETD Inbound (Keberangkatan Pulang) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">ETD Inbound (Tanggal & Jam Dep)</label>
+              <input type="datetime-local" x-model="flightForm.etdIn"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 font-mono text-xs focus:border-cyan-400">
+            </div>
+
+            <!-- ETA Inbound (Kedatangan Pulang) -->
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">ETA Inbound (Tanggal & Jam Arrv)</label>
+              <input type="datetime-local" x-model="flightForm.etaIn"
+                class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 font-mono text-xs focus:border-cyan-400">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM FLOATING ACTION BAR -->
+      <div
+        class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex items-center justify-between gap-4 backdrop-blur-md sticky bottom-4 z-20 shadow-2xl">
+        <div class="text-xs text-slate-400 flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+          <span>Data tersimpan otomatis ke Sheet Penerbangan</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button type="button" @click="resetFlightForm()"
+            class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-all border border-slate-700">
+            Reset Form
+          </button>
+          <button type="submit" :disabled="isSavingFlight"
+            class="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold rounded-xl text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition-all disabled:opacity-50">
+            <template x-if="isSavingFlight">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-spinner animate-spin"></i>
+                <span>Menyimpan Penerbangan...</span>
+              </span>
+            </template>
+            <template x-if="!isSavingFlight">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>Simpan Data Penerbangan</span>
+              </span>
+            </template>
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </template>
+
+  <!-- TAB 2: DAFTAR MASTER PENERBANGAN & BLOCK SEAT -->
+  <template x-if="flightTab === 'list'">
+    <div class="space-y-4">
+      <div
+        class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h3 class="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-cyan-400"></i>
+          <span>Master Penerbangan & Alokasi Block Seat</span>
+        </h3>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="exportFlightListToExcel()"
+            class="px-3.5 py-1.5 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-emerald-600/40">
+            <i class="fa-solid fa-file-excel text-emerald-300"></i>
+            <span>Export Excel List</span>
+          </button>
+          <button @click="loadFlightData()"
+            class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
+            <i class="fa-solid fa-rotate-right" :class="{'animate-spin': isFlightLoading}"></i>
+            <span>Refresh Data</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs whitespace-nowrap">
+            <thead class="bg-slate-950/90 text-cyan-300 uppercase font-semibold border-b border-slate-800 text-[11px]">
+              <tr>
+                <th class="py-3 px-4">No</th>
+                <th class="py-3 px-4">Kode PNR</th>
+                <th class="py-3 px-4">Maskapai / Tipe</th>
+                <th class="py-3 px-4">Outbound (Pergi)</th>
+                <th class="py-3 px-4">Inbound (Pulang)</th>
+                <th class="py-3 px-4 text-center">Block Seat</th>
+                <th class="py-3 px-4 text-right">Harga Beli Tiket</th>
+                <th class="py-3 px-4 text-center">Status</th>
+                <th class="py-3 px-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 font-mono text-slate-300">
+              <template x-for="(fl, idx) in (flightList || [])" :key="fl.idflight || idx">
+                <tr class="hover:bg-slate-800/40 transition-colors">
+                  <td class="py-3 px-4 text-slate-400 font-sans font-bold" x-text="idx + 1"></td>
+                  <td class="py-3 px-4 text-cyan-300 font-bold" x-text="fl.pnrCode"></td>
+                  <td class="py-3 px-4 text-slate-100 font-bold font-sans">
+                    <span x-text="fl.maskapai"></span>
+                    <span class="ml-1 text-[10px] font-mono px-1.5 py-0.2 rounded"
+                      :class="fl.tipePenerbangan === 'Direct' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'"
+                      x-text="fl.tipePenerbangan"></span>
+                  </td>
+                  <td class="py-3 px-4 font-sans text-xs">
+                    <div class="font-bold text-slate-200" x-text="fl.noFlightOut || '-'"></div>
+                    <div class="text-[10px] text-slate-400 font-mono"
+                      x-text="(fl.originOut || 'CGK') + ' -> ' + (fl.destOut || 'MED')"></div>
+                  </td>
+                  <td class="py-3 px-4 font-sans text-xs">
+                    <div class="font-bold text-amber-300" x-text="fl.noFlightIn || '-'"></div>
+                    <div class="text-[10px] text-slate-400 font-mono"
+                      x-text="(fl.originIn || 'JED') + ' -> ' + (fl.destIn || 'CGK')"></div>
+                  </td>
+                  <td class="py-3 px-4 text-center font-bold text-emerald-300"
+                    x-text="(fl.blockSeatTotal || 45) + ' Pax'"></td>
+                  <td class="py-3 px-4 text-right text-amber-300 font-bold"
+                    x-text="formatCurrencyIDR(fl.hargaBeliTicket)"></td>
+                  <td class="py-3 px-4 text-center">
+                    <span class="px-2 py-0.5 text-[10.5px] font-bold rounded-md font-sans"
+                      :class="fl.statusSeat === 'Available' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : (fl.statusSeat === 'Issued' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30')"
+                      x-text="fl.statusSeat || 'Available'"></span>
+                  </td>
+                  <td class="py-3 px-4 text-center font-sans">
+                    <div class="flex items-center justify-center gap-1.5">
+                      <button @click="loadSelectedFlight(fl)"
+                        class="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-pen-to-square text-cyan-400"></i>
+                        <span>Edit</span>
+                      </button>
+                      <button @click="deleteFlightItem(fl.idflight)"
+                        class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs transition-colors"
+                        title="Hapus Flight">
+                        <i class="fa-solid fa-trash-can"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <template x-if="!flightList || flightList.length === 0">
+                <tr>
+                  <td colspan="9" class="py-8 text-center text-slate-500 font-sans">
+                    Belum ada data penerbangan tersimpan. Klik tab 'Form Input Flight' untuk menambahkan data
+                    penerbangan baru.
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+</div>

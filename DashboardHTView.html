@@ -1,0 +1,737 @@
+<div x-show="currentModule === 'mod_dashboard_ht'"
+  class="h-[calc(100vh-140px)] flex flex-col space-y-4 bg-slate-950 rounded-2xl shadow-2xl p-4 md:p-5 border border-slate-800 text-slate-300"
+  x-data="dashboardHTManager()" x-init="initData()">
+
+  <style>
+    .ht-table-scroll::-webkit-scrollbar {
+      height: 10px;
+      width: 10px;
+    }
+
+    .ht-table-scroll::-webkit-scrollbar-track {
+      background: #0f172a;
+      border-radius: 8px;
+    }
+
+    .ht-table-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 8px;
+      border: 2px solid #0f172a;
+    }
+
+    .ht-table-scroll::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .ht-glow-text {
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    }
+
+    .ht-glow-emerald {
+      text-shadow: 0 0 10px rgba(52, 211, 153, 0.4);
+    }
+  </style>
+
+  <!-- Header Section -->
+  <div
+    class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-inner">
+    <div>
+      <h2
+        class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center gap-3 uppercase tracking-wider ht-glow-text">
+        <i class="fa-solid fa-chart-line text-cyan-400"></i> Dashboard Haji Terencana
+      </h2>
+      <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest font-semibold">
+        Pemetaan Pembayaran Angsuran Per Bulan
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <div class="relative w-full md:w-64">
+        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <i class="fa-solid fa-search text-slate-500"></i>
+        </div>
+        <input type="text" x-model="searchQuery" placeholder="Cari Nama Jamaah atau No Porsi..." class="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full pl-10 p-2 placeholder-slate-500 transition-colors">
+      </div>
+      <button @click="toggleChart()"
+        class="flex-1 md:flex-none px-4 py-2 border border-slate-700 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all text-purple-400 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(192,132,252,0.2)]">
+        <i class="fa-solid" :class="showChart ? 'fa-eye-slash' : 'fa-chart-area'"></i> <span
+          x-text="showChart ? 'Tutup Grafik' : 'Lihat Grafik'"></span>
+      </button>
+      <button @click="fetchData()"
+        class="flex-1 md:flex-none px-4 py-2 border border-slate-700 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all text-cyan-400 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+        <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Refresh
+      </button>
+      <button @click="exportToExcel()"
+        class="flex-1 md:flex-none px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg hover:from-emerald-500 hover:to-teal-500 transition-all text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] border border-emerald-400/30">
+        <i class="fa-solid fa-file-excel"></i> Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div x-show="isLoading"
+    class="flex-1 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-800 shadow-inner p-8">
+    <div
+      class="w-12 h-12 border-4 border-slate-700 border-t-cyan-400 rounded-full animate-spin shadow-[0_0_15px_rgba(34,211,238,0.5)]">
+    </div>
+    <p class="mt-6 text-cyan-400 font-bold tracking-widest text-sm uppercase animate-pulse">Memuat Data Transaksi...</p>
+  </div>
+
+  <!-- Chart Section -->
+  <div x-show="!isLoading && filteredDataList.length > 0 && showChart" x-transition style="display: none;"
+    class="bg-slate-900/50 backdrop-blur-sm rounded-xl border border-slate-800 p-4 shadow-2xl">
+    <h3 class="text-xs text-slate-400 font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+      <i class="fa-solid fa-chart-area text-cyan-500"></i> Trend Pembayaran Angsuran
+    </h3>
+    <div class="h-48 md:h-64 w-full relative">
+      <canvas id="htPaymentChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Table Section -->
+  <div x-show="!isLoading" style="display: none;"
+    class="flex-1 min-h-0 rounded-xl shadow-2xl border border-slate-800 flex flex-col overflow-hidden bg-slate-900/50 backdrop-blur-sm relative">
+    <div class="overflow-auto flex-1 h-full ht-table-scroll">
+      <table class="w-full text-xs text-left whitespace-nowrap min-w-max border-collapse font-sans">
+        <thead class="text-[10px] text-cyan-300 uppercase tracking-widest sticky top-0 z-30">
+          <tr>
+            <th rowspan="2"
+              class="px-3 py-3 border-r border-b border-slate-700 font-bold w-10 text-center bg-slate-900 sticky left-0 z-40 align-middle shadow-[2px_0_5px_rgba(0,0,0,0.5)]">
+              No</th>
+            <th rowspan="2"
+              class="px-4 py-3 border-r border-b border-slate-700 font-bold text-center bg-slate-900 sticky left-[40px] z-40 align-middle shadow-[2px_0_5px_rgba(0,0,0,0.5)]">
+              No Porsi</th>
+            <th rowspan="2"
+              class="px-4 py-3 border-r border-b border-slate-700 font-bold text-center bg-slate-900 sticky left-[150px] z-40 align-middle shadow-[2px_0_5px_rgba(0,0,0,0.5)]">
+              Nama Jamaah</th>
+            <th rowspan="2"
+              class="px-3 py-3 border-r border-b border-slate-700 font-bold text-center align-middle bg-slate-900/95 backdrop-blur">
+              Kode</th>
+            <th rowspan="2"
+              class="px-3 py-3 border-r border-b border-slate-700 font-bold text-center align-middle bg-slate-900/95 backdrop-blur">
+              Harga Paket</th>
+            <th rowspan="2"
+              class="px-3 py-3 border-r border-b border-slate-700 font-bold text-center align-middle bg-slate-900/95 backdrop-blur">
+              DP</th>
+            <th rowspan="2"
+              class="px-3 py-3 border-r border-b border-slate-700 font-bold text-center align-middle text-amber-400 bg-slate-900/95 backdrop-blur">
+              Angsuran/Bln</th>
+            <th rowspan="2"
+              class="px-3 py-3 border-r border-b border-slate-700 font-bold text-center text-emerald-400 bg-slate-900/95 backdrop-blur align-middle">
+              Jml Angsuran</th>
+
+            <!-- Dynamic Year Headers -->
+            <template x-for="year in Object.keys(groupedMonths).sort()" :key="year">
+              <th :colspan="groupedMonths[year].length"
+                class="px-2 py-1.5 border-r border-b border-slate-700 font-black text-center text-blue-300 bg-slate-800/80 tracking-[0.2em]"
+                x-text="year"></th>
+            </template>
+          </tr>
+          <tr>
+            <!-- Dynamic Month Headers -->
+            <template x-for="year in Object.keys(groupedMonths).sort()" :key="'r2'+year">
+              <template x-for="month in groupedMonths[year]" :key="year+'-'+month">
+                <th
+                  class="px-3 py-1.5 border-r border-b border-slate-700 font-black text-center text-slate-300 bg-slate-800/40"
+                  x-text="getMonthName(month)"></th>
+              </template>
+            </template>
+          </tr>
+        </thead>
+        <tbody class="relative z-10 text-slate-300">
+          <template x-if="filteredDataList.length === 0">
+            <tr>
+              <td :colspan="8 + ymKeys.length" class="px-4 py-16 text-center text-slate-500 bg-slate-900 relative z-10">
+                <i class="fa-solid fa-database text-5xl mb-4 text-slate-700 block"></i>
+                <span class="text-sm tracking-widest uppercase font-bold text-slate-400">Tidak ada data transaksi
+                  ditemukan</span>
+              </td>
+            </tr>
+          </template>
+
+          <template x-for="(item, index) in filteredDataList" :key="item.noPorsi">
+            <tr class="border-b border-slate-800/50 hover:bg-slate-800/70 transition-colors group">
+              <td
+                class="px-3 py-2 border-r border-slate-800 text-center bg-slate-900 sticky left-0 z-20 group-hover:bg-slate-800 font-mono text-slate-500"
+                x-text="index + 1"></td>
+              <td
+                class="px-4 py-2 border-r border-slate-800 font-mono text-cyan-400 bg-slate-900 sticky left-[40px] z-20 group-hover:bg-slate-800 ht-glow-text"
+                x-text="item.noPorsi"></td>
+              <td
+                class="px-4 py-2 border-r border-slate-800 font-bold text-slate-200 bg-slate-900 sticky left-[150px] z-20 group-hover:bg-slate-800">
+                <button type="button" @click.prevent="openAngsuranDetail(item)" class="text-cyan-400 hover:text-cyan-300 underline decoration-cyan-500/50 underline-offset-4 font-semibold text-left transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-cyan-500 rounded px-1">
+                  <span x-text="item.namaJamaah"></span>
+                </button>
+              </td>
+              <td class="px-3 py-2 border-r border-slate-800 text-center font-mono">
+                <span
+                  class="px-2 py-0.5 bg-slate-800 rounded text-[10px] font-bold text-slate-400 border border-slate-700"
+                  x-text="item.kode"></span>
+              </td>
+              <td class="px-3 py-2 border-r border-slate-800 text-right font-mono text-slate-400"
+                x-text="formatRupiah(item.hargaPaket)"></td>
+              <td class="px-3 py-2 border-r border-slate-800 text-right font-mono text-slate-400"
+                x-text="formatRupiah(item.dp)"></td>
+              <td class="px-3 py-2 border-r border-slate-800 text-right font-mono text-amber-400/90"
+                x-text="formatRupiah(item.angsuranBulan)"></td>
+              <td
+                class="px-3 py-2 border-r border-slate-700 text-right font-mono font-bold text-emerald-400 bg-slate-800/30 ht-glow-emerald"
+                x-text="formatRupiah(item.totalKumulatif)"></td>
+
+              <!-- Dynamic Months Cells -->
+              <template x-for="ym in ymKeys" :key="ym">
+                <td
+                  class="px-2 py-2 border-r border-slate-800 text-right font-mono font-medium"
+                  :class="item.pendingMonths && item.pendingMonths[ym] ? 'bg-yellow-500/30 text-yellow-300' : 'bg-slate-900/20 text-emerald-300 group-hover:bg-slate-800/40'">
+                  <template x-if="item.transaksi[ym]">
+                    <span
+                      class="px-1.5 py-0.5 rounded shadow-[0_0_5px_rgba(16,185,129,0.2)]"
+                      :class="item.pendingMonths && item.pendingMonths[ym] ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-emerald-500/10 border border-emerald-500/20'"
+                      x-text="formatRupiah(item.transaksi[ym])"></span>
+                  </template>
+                </td>
+              </template>
+            </tr>
+          </template>
+        </tbody>
+        <tfoot
+          class="bg-slate-900 font-bold sticky bottom-0 z-30 shadow-[0_-2px_10px_rgba(0,0,0,0.5)] border-t-2 border-slate-700 relative text-cyan-200">
+          <tr>
+            <td colspan="4"
+              class="px-4 py-3 border-r border-slate-700 text-right sticky left-0 z-40 bg-slate-900 uppercase tracking-widest text-[10px]">
+              TOTAL KESELURUHAN</td>
+            <td class="px-3 py-3 border-r border-slate-700 text-right font-mono"
+              x-text="formatRupiah(grandTotal.hargaPaket)"></td>
+            <td class="px-3 py-3 border-r border-slate-700 text-right font-mono" x-text="formatRupiah(grandTotal.dp)">
+            </td>
+            <td class="px-3 py-3 border-r border-slate-700 text-right font-mono text-amber-300"
+              x-text="formatRupiah(grandTotal.angsuranBulan)"></td>
+            <td
+              class="px-3 py-3 border-r border-slate-700 text-right font-mono text-emerald-300 bg-slate-800/50 ht-glow-emerald"
+              x-text="formatRupiah(grandTotal.kumulatif)"></td>
+
+            <template x-for="ym in ymKeys" :key="ym">
+              <td class="px-2 py-3 border-r border-slate-700 text-right font-mono text-emerald-400/80"
+                x-text="grandTotal.transaksi[ym] ? formatRupiah(grandTotal.transaksi[ym]) : '-'"></td>
+            </template>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Detail Angsuran -->
+  <div x-show="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style="display: none;">
+    <div @click.away="showDetailModal = false" class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center p-4 md:p-5 border-b border-slate-700 bg-slate-800/50">
+        <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center gap-3">
+          <i class="fa-solid fa-clipboard-list text-cyan-400"></i> Detail Angsuran Jamaah
+        </h3>
+        <button @click="showDetailModal = false" class="text-slate-400 hover:text-red-400 transition-colors">
+          <i class="fa-solid fa-xmark text-2xl"></i>
+        </button>
+      </div>
+      
+      <!-- Modal Body (Printable Area) -->
+      <div id="printAreaHT" class="p-4 md:p-6 overflow-y-auto flex-1 bg-white text-slate-800">
+        <template x-if="selectedItem">
+          <div>
+            <div class="text-center mb-6 border-b-2 border-slate-300 pb-4">
+              <h2 class="text-2xl font-bold uppercase mb-1">Laporan Angsuran Haji Terencana</h2>
+              <p class="text-sm text-slate-500">Dicetak pada: <span x-text="new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})"></span></p>
+            </div>
+            
+            <table class="w-full text-sm mb-6">
+              <tr><td class="font-bold w-32 py-1">Nama Jamaah</td><td class="w-4">:</td><td class="font-bold text-base uppercase" x-text="selectedItem.namaJamaah"></td></tr>
+              <tr><td class="font-bold py-1">No Porsi</td><td>:</td><td x-text="selectedItem.noPorsi"></td></tr>
+              <tr><td class="font-bold py-1">Kode Paket</td><td>:</td><td x-text="selectedItem.kode"></td></tr>
+              <tr><td class="font-bold py-1">Harga Paket</td><td>:</td><td x-text="'Rp ' + formatRupiah(selectedItem.hargaPaket)"></td></tr>
+              <tr><td class="font-bold py-1">DP</td><td>:</td><td x-text="'Rp ' + formatRupiah(selectedItem.dp)"></td></tr>
+              <tr><td class="font-bold py-1">Angsuran / Bln</td><td>:</td><td x-text="'Rp ' + formatRupiah(selectedItem.angsuranBulan)"></td></tr>
+            </table>
+
+            <h3 class="font-bold mb-2 text-lg">Rincian Pembayaran per Bulan</h3>
+            <table class="w-full border-collapse border border-slate-300 text-sm">
+              <thead class="bg-slate-100">
+                <tr>
+                  <th class="border border-slate-300 px-3 py-2 text-center w-16">No</th>
+                  <th class="border border-slate-300 px-3 py-2 text-left">Tanggal Setor</th>
+                  <th class="border border-slate-300 px-3 py-2 text-right">Jumlah Angsuran</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(amt, index) in getDetailTransaksi(selectedItem)" :key="index">
+                  <tr :class="amt.status && amt.status.toLowerCase().includes('pending') ? 'bg-yellow-100' : ''">
+                    <td class="border border-slate-300 px-3 py-2 text-center" x-text="index + 1"></td>
+                    <td class="border border-slate-300 px-3 py-2 text-left">
+                      <span x-text="formatTanggal(amt.tanggalRaw)"></span>
+                      <template x-if="amt.status && amt.status.toLowerCase().includes('pending')">
+                        <span class="ml-2 px-2 py-0.5 text-[10px] font-bold rounded uppercase bg-yellow-400 text-yellow-900"
+                              x-text="amt.status"></span>
+                      </template>
+                    </td>
+                    <td class="border border-slate-300 px-3 py-2 text-right" x-text="'Rp ' + formatRupiah(amt.amount)"></td>
+                  </tr>
+                </template>
+                <tr class="bg-slate-50 font-bold">
+                  <td colspan="2" class="border border-slate-300 px-3 py-2 text-right">Total Angsuran Masuk</td>
+                  <td class="border border-slate-300 px-3 py-2 text-right text-emerald-600" x-text="'Rp ' + formatRupiah(selectedItem.totalKumulatif)"></td>
+                </tr>
+                <tr class="bg-slate-50 font-bold">
+                  <td colspan="2" class="border border-slate-300 px-3 py-2 text-right">Sisa Pembayaran</td>
+                  <td class="border border-slate-300 px-3 py-2 text-right text-red-600" x-text="'Rp ' + formatRupiah((selectedItem.hargaPaket || 0) - ((selectedItem.dp || 0) + (selectedItem.totalKumulatif || 0)))"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3">
+        <button @click="showDetailModal = false" class="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors font-bold text-sm">Tutup</button>
+        <button @click="printAngsuran()" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-500 hover:to-teal-500 transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2 font-bold text-sm">
+          <i class="fa-solid fa-print"></i> Cetak PDF A4
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function dashboardHTManager() {
+    return {
+      isLoading: true,
+      showChart: false,
+      searchQuery: '',
+      dataList: [],
+      filteredDataList: [],
+      ymKeys: [],
+      groupedMonths: {},
+      chartInstance: null,
+      showDetailModal: false,
+      selectedItem: null,
+      grandTotal: {
+        hargaPaket: 0,
+        dp: 0,
+        angsuranBulan: 0,
+        kumulatif: 0,
+        transaksi: {}
+      },
+
+      initData() {
+        this.fetchData();
+        this.$watch('searchQuery', () => {
+          this.applyFilter();
+        });
+      },
+
+      fetchData() {
+        this.isLoading = true;
+        google.script.run
+          .withSuccessHandler(res => {
+            this.isLoading = false;
+            if (res && res.success) {
+              this.dataList = res.data;
+              this.ymKeys = res.ymKeys;
+              this.ymKeys.sort((a,b) => a.localeCompare(b));
+
+              this.groupedMonths = {};
+              this.ymKeys.forEach(ym => {
+                const [y, m] = ym.split('-');
+                if (!this.groupedMonths[y]) this.groupedMonths[y] = [];
+                if (!this.groupedMonths[y].includes(m)) {
+                  this.groupedMonths[y].push(m);
+                }
+              });
+              
+              Object.keys(this.groupedMonths).forEach(y => {
+                this.groupedMonths[y].sort((a,b) => parseInt(a, 10) - parseInt(b, 10));
+              });
+
+              this.applyFilter();
+            } else {
+              Swal.fire({
+                title: 'Error',
+                text: res?.message || 'Gagal memuat data',
+                icon: 'error',
+                background: '#0f172a',
+                color: '#38bdf8'
+              });
+            }
+          })
+          .withFailureHandler(err => {
+            this.isLoading = false;
+            Swal.fire({
+              title: 'Error',
+              text: 'Terjadi kesalahan sistem: ' + err.message,
+              icon: 'error',
+              background: '#0f172a',
+              color: '#38bdf8'
+            });
+          })
+          .apiGetDashboardHTData(window.sessionToken);
+      },
+
+      toggleChart() {
+        this.showChart = !this.showChart;
+        if (this.showChart && this.filteredDataList.length > 0) {
+          setTimeout(() => this.renderChart(), 100);
+        }
+      },
+
+      applyFilter() {
+        if (!this.searchQuery) {
+          this.filteredDataList = this.dataList;
+        } else {
+          const q = this.searchQuery.toLowerCase();
+          this.filteredDataList = this.dataList.filter(item => 
+            (item.namaJamaah && item.namaJamaah.toLowerCase().includes(q)) ||
+            (item.noPorsi && item.noPorsi.toLowerCase().includes(q))
+          );
+        }
+        this.calculateGrandTotal(this.filteredDataList);
+        if (this.showChart) {
+          setTimeout(() => this.renderChart(), 100);
+        }
+      },
+
+      calculateGrandTotal(listToCalculate) {
+        const t = {
+          hargaPaket: 0,
+          dp: 0,
+          angsuranBulan: 0,
+          kumulatif: 0,
+          transaksi: {}
+        };
+
+        this.ymKeys.forEach(ym => t.transaksi[ym] = 0);
+
+        if(!listToCalculate) listToCalculate = this.filteredDataList;
+
+        listToCalculate.forEach(item => {
+          t.hargaPaket += item.hargaPaket || 0;
+          t.dp += item.dp || 0;
+          t.angsuranBulan += item.angsuranBulan || 0;
+          t.kumulatif += item.totalKumulatif || 0;
+
+          this.ymKeys.forEach(ym => {
+            if (item.transaksi[ym]) {
+              t.transaksi[ym] += item.transaksi[ym];
+            }
+          });
+        });
+
+        this.grandTotal = t;
+      },
+
+      renderChart() {
+        const canvas = document.getElementById('htPaymentChart');
+        if (!canvas) return;
+
+        if (this.chartInstance) {
+          this.chartInstance.destroy();
+        }
+
+        if (typeof Chart === 'undefined') {
+          console.warn('Chart.js not loaded. Cannot render chart.');
+          return;
+        }
+
+        const labels = this.ymKeys.map(ym => {
+          const parts = ym.split('-');
+          return `${parts[1]}/${parts[0]}`;
+        });
+
+        const dataPoints = this.ymKeys.map(ym => this.grandTotal.transaksi[ym] || 0);
+
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+        gradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+        this.chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Total Angsuran Masuk',
+              data: dataPoints,
+              borderColor: '#38bdf8',
+              backgroundColor: gradient,
+              borderWidth: 2,
+              pointBackgroundColor: '#0f172a',
+              pointBorderColor: '#38bdf8',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                titleColor: '#cbd5e1',
+                bodyColor: '#38bdf8',
+                borderColor: '#334155',
+                borderWidth: 1,
+                callbacks: {
+                  label: function (context) {
+                    return 'Rp ' + new Intl.NumberFormat('id-ID').format(context.raw);
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: '#334155', drawBorder: false },
+                ticks: { color: '#94a3b8', font: { family: 'monospace', size: 10 } }
+              },
+              y: {
+                grid: { color: '#1e293b', drawBorder: false },
+                ticks: {
+                  color: '#64748b',
+                  font: { family: 'monospace', size: 10 },
+                  callback: function (value) {
+                    if (value >= 1000000) return (value / 1000000) + 'M';
+                    if (value >= 1000) return (value / 1000) + 'K';
+                    return value;
+                  }
+                },
+                beginAtZero: true
+              }
+            }
+          }
+        });
+      },
+
+      formatRupiah(num) {
+        if (!num || isNaN(num) || num === 0) return '';
+        // Format number to local string without Rp prefix for compact layout
+        return new Intl.NumberFormat('id-ID').format(num);
+      },
+
+      openAngsuranDetail(item) {
+        this.selectedItem = item;
+        this.showDetailModal = true;
+      },
+
+      getDetailTransaksi(item) {
+        if (!item) return [];
+        if (item.rincianTransaksi && item.rincianTransaksi.length > 0) {
+          return item.rincianTransaksi.map(t => ({
+            tanggalRaw: t.tanggal,
+            amount: t.jumlah,
+            status: t.status
+          })).sort((a,b) => new Date(a.tanggalRaw) - new Date(b.tanggalRaw));
+        }
+        
+        // Fallback untuk data lama
+        if (item.transaksi) {
+          return this.ymKeys.map(ym => ({
+            tanggalRaw: ym,
+            amount: item.transaksi[ym] || 0
+          })).filter(detail => detail.amount > 0);
+        }
+        return [];
+      },
+
+      formatTanggal(rawDate) {
+        if (!rawDate) return '';
+        // Cek jika formatnya YYYY-MM (data lama)
+        if (rawDate.length === 7 && rawDate.includes('-')) {
+          const parts = rawDate.split('-');
+          const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+          return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        }
+        
+        const date = new Date(rawDate);
+        if (isNaN(date.getTime())) return rawDate;
+        return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      },
+      
+      getMonthName(m) {
+        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+        const mInt = parseInt(m, 10);
+        return isNaN(mInt) ? m : months[mInt - 1];
+      },
+
+      printAngsuran() {
+        if (!this.selectedItem) return;
+        const printContents = document.getElementById('printAreaHT').innerHTML;
+        
+        const printWindow = window.open('', '_blank', 'width=900,height=650');
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Cetak Angsuran - ${this.selectedItem.namaJamaah}</title>
+              <script src="https://cdn.tailwindcss.com"><\/script>
+              <style>
+                @page { size: A4 portrait; margin: 15mm; }
+                body { 
+                  font-family: Arial, sans-serif; 
+                  -webkit-print-color-adjust: exact !important; 
+                  print-color-adjust: exact !important;
+                }
+              </style>
+            </head>
+            <body class="bg-white text-black">
+              ${printContents}
+              <script>
+                window.onload = function() {
+                  setTimeout(function() {
+                    window.print();
+                    window.close();
+                  }, 500);
+                }
+              <\/script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      },
+
+      exportToExcel() {
+        if (typeof XLSX === 'undefined') {
+          Swal.fire({
+            title: 'Menyiapkan File...',
+            text: 'Sedang mengatur format Excel.',
+            background: '#0f172a',
+            color: '#38bdf8',
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          });
+          
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js';
+          script.onload = () => {
+            Swal.close();
+            this.generateXLSX();
+          };
+          document.head.appendChild(script);
+        } else {
+          this.generateXLSX();
+        }
+      },
+
+      generateXLSX() {
+        const ws_data = [];
+        
+        // Header Title
+        ws_data.push([{ v: "LAPORAN ANGSURAN HAJI TERENCANA", s: { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" } } }]);
+        ws_data.push([]); // empty row
+        
+        // Table Headers
+        const headerStyle = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "0F172A" } },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "334155" } },
+            bottom: { style: "thin", color: { rgb: "334155" } },
+            left: { style: "thin", color: { rgb: "334155" } },
+            right: { style: "thin", color: { rgb: "334155" } }
+          }
+        };
+
+        const headers = ['No', 'No Porsi', 'Nama Jamaah', 'Kode', 'Harga Paket', 'DP', 'Angsuran/Bulan', 'Jumlah Angsuran'].concat(this.ymKeys);
+        const headerRow = headers.map(h => ({ v: h, s: headerStyle }));
+        ws_data.push(headerRow);
+        
+        const dataStyle = {
+          border: {
+            top: { style: "thin", color: { rgb: "CBD5E1" } },
+            bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+            left: { style: "thin", color: { rgb: "CBD5E1" } },
+            right: { style: "thin", color: { rgb: "CBD5E1" } }
+          },
+          alignment: { vertical: "center" }
+        };
+
+        const moneyStyle = {
+          numFmt: '"Rp"#,##0',
+          alignment: { horizontal: "right", vertical: "center" },
+          border: dataStyle.border
+        };
+
+        // Data Rows
+        this.filteredDataList.forEach((it, idx) => {
+          const row = [
+            { v: idx + 1, s: { ...dataStyle, alignment: { horizontal: "center", vertical: "center" } } },
+            { v: it.noPorsi, t: "s", s: { ...dataStyle, alignment: { horizontal: "center", vertical: "center" } } },
+            { v: it.namaJamaah, s: dataStyle },
+            { v: it.kode, s: { ...dataStyle, alignment: { horizontal: "center", vertical: "center" } } },
+            { v: it.hargaPaket || 0, t: "n", s: moneyStyle },
+            { v: it.dp || 0, t: "n", s: moneyStyle },
+            { v: it.angsuranBulan || 0, t: "n", s: moneyStyle },
+            { v: it.totalKumulatif || 0, t: "n", s: moneyStyle }
+          ];
+          
+          this.ymKeys.forEach(ym => {
+            row.push({ v: it.transaksi[ym] || 0, t: "n", s: moneyStyle });
+          });
+          
+          ws_data.push(row);
+        });
+
+        // Totals
+        const footerStyle = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: "E2E8F0" } },
+          border: dataStyle.border,
+          alignment: { horizontal: "right", vertical: "center" }
+        };
+        const footerMoneyStyle = { ...moneyStyle, ...footerStyle };
+
+        const totalRow = [
+          { v: 'TOTAL KESELURUHAN', s: footerStyle },
+          { v: '', s: footerStyle },
+          { v: '', s: footerStyle },
+          { v: '', s: footerStyle },
+          { v: this.grandTotal.hargaPaket || 0, t: "n", s: footerMoneyStyle },
+          { v: this.grandTotal.dp || 0, t: "n", s: footerMoneyStyle },
+          { v: this.grandTotal.angsuranBulan || 0, t: "n", s: footerMoneyStyle },
+          { v: this.grandTotal.kumulatif || 0, t: "n", s: footerMoneyStyle }
+        ];
+        
+        this.ymKeys.forEach(ym => {
+          totalRow.push({ v: this.grandTotal.transaksi[ym] || 0, t: "n", s: footerMoneyStyle });
+        });
+        ws_data.push(totalRow);
+
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        
+        // Merges for title and footer
+        ws['!merges'] = [
+          { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+          { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 3 } }
+        ];
+        
+        // Column widths
+        const colWidths = [
+          { wch: 5 }, // No
+          { wch: 15 }, // Porsi
+          { wch: 30 }, // Nama
+          { wch: 10 }, // Kode
+          { wch: 15 }, // Harga
+          { wch: 15 }, // DP
+          { wch: 15 }, // Angsuran
+          { wch: 15 }  // Jumlah
+        ];
+        this.ymKeys.forEach(() => colWidths.push({ wch: 15 }));
+        ws['!cols'] = colWidths;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Data HT");
+        XLSX.writeFile(wb, "Dashboard_Haji_Terencana.xlsx");
+      }
+    };
+  }
+</script>

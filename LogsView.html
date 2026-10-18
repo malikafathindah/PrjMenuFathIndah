@@ -1,0 +1,96 @@
+<div x-show="currentModule === 'mod_logs'" class="space-y-6" x-transition>
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
+    <div>
+      <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+        <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+        <span>Log Aktivitas & Audit Keamanan</span>
+      </h2>
+      <p class="text-xs text-slate-400 mt-1">Audit trail Jejak IP, Geolokasi, dan setiap aksi pengguna di dalam sistem</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button @click="loadActivityLogs()" 
+              :disabled="loading"
+              class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-all flex items-center gap-2 disabled:opacity-50">
+        <i class="fa-solid fa-rotate text-cyan-400" :class="{'animate-spin': loading}"></i>
+        <span>Refresh Log</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Card -->
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="relative flex-1 max-w-md w-full">
+      <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+      </span>
+      <input type="text" x-model="logSearchQuery" placeholder="Cari IP, username, atau aksi..."
+        class="w-full pl-9 pr-4 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400">
+    </div>
+    <div class="text-xs text-slate-400">
+      Menampilkan <span class="font-bold text-slate-200" x-text="filteredLogs().length"></span> entri log
+    </div>
+  </div>
+
+  <!-- Logs Table -->
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+          <tr>
+            <th class="py-3.5 px-4">Waktu (Timestamp)</th>
+            <th class="py-3.5 px-4">Pengguna</th>
+            <th class="py-3.5 px-4">Alamat IP</th>
+            <th class="py-3.5 px-4">Perkiraan Lokasi</th>
+            <th class="py-3.5 px-4">Peta (Google Maps)</th>
+            <th class="py-3.5 px-4">Aksi / Detail</th>
+            <th class="py-3.5 px-4">Modul</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+          <template x-if="filteredLogs().length === 0">
+            <tr>
+              <td colspan="7" class="py-12 text-center text-slate-500">
+                <i class="fa-solid fa-shield-cat text-3xl mb-2 text-slate-600"></i>
+                <p>Belum ada data log aktivitas tercatat di Sheet ActivityLogs.</p>
+              </td>
+            </tr>
+          </template>
+
+          <template x-for="log in filteredLogs()" :key="log.LogID || Math.random()">
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="py-3.5 px-4 text-slate-400 whitespace-nowrap" x-text="formatDate(log.Timestamp)"></td>
+              <td class="py-3.5 px-4 font-semibold text-slate-200" x-text="log.Username || 'System'"></td>
+              <td class="py-3.5 px-4 font-mono text-cyan-400" x-text="log.IP_Address || '-'"></td>
+              <td class="py-3.5 px-4 text-slate-300" x-text="extractCity(log)"></td>
+              <td class="py-3.5 px-4">
+                <template x-if="extractMapsUrl(log) !== '#'">
+                  <a :href="extractMapsUrl(log)" target="_blank" title="Buka Lokasi di Google Maps"
+                    class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-[11px] font-semibold transition-all inline-flex items-center gap-1.5 shrink-0">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span>Google Maps</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                  </a>
+                </template>
+                <template x-if="extractMapsUrl(log) === '#'">
+                  <span class="text-slate-600 text-xs">-</span>
+                </template>
+              </td>
+              <td class="py-3.5 px-4 text-slate-200">
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium inline-block"
+                  :class="{
+                    'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': String(log.Action || '').includes('LOGIN_SUCCESS') || String(log.Action || '').includes('SYSTEM_INITIALIZED'),
+                    'bg-rose-500/10 text-rose-400 border border-rose-500/20': String(log.Action || '').includes('LOGIN_FAILED') || String(log.Action || '').includes('DELETE'),
+                    'bg-blue-500/10 text-blue-400 border border-blue-500/20': String(log.Action || '').includes('CREATE') || String(log.Action || '').includes('UPDATE'),
+                    'bg-slate-800 text-slate-300': !String(log.Action || '').includes('LOGIN') && !String(log.Action || '').includes('CREATE') && !String(log.Action || '').includes('DELETE') && !String(log.Action || '').includes('SYSTEM')
+                  }"
+                  x-text="log.Action || 'LOG_ENTRY'"></span>
+              </td>
+              <td class="py-3.5 px-4 text-slate-400 font-mono text-[11px]" x-text="log.Module || 'System'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

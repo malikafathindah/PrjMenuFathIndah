@@ -1,0 +1,3264 @@
+<!-- ============================================================================ -->
+<!-- INPUT DATA JAMAAH & ROOMING LIST VIEW COMPONENT (JamaahInputView.html) -->
+<!-- ModulID: mod_input_jamaah (Kategori: Pendaftaran) -->
+<!-- Target Google Sheet: Data Jamaah -->
+<!-- ============================================================================ -->
+<style>
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(100%);
+    cursor: pointer;
+    opacity: 0.9;
+  }
+</style>
+
+<div x-show="currentModule !== 'mod_view_jamaah_haji' && !currentModule.includes('haji') && (currentModule === 'mod_data_jamaah' || currentModule === 'mod_form_input_jamaah' || currentModule === 'mod_rooming_list' || currentModule === 'mod_pembayaran_jamaah' || currentModule === 'mod_input_jamaah') && !isJamaahUploadModule(currentModule, currentModuleName)" class="space-y-4" x-transition x-data="jamaahModuleApp()">
+
+  <!-- 3D Header Bar & Statistics Toolbar -->
+  <div x-show="currentModule !== 'mod_form_input_jamaah' && currentModule !== 'mod_data_jamaah'" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
+    <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="flex items-center gap-3.5 z-10">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 p-0.5 shadow-lg shadow-emerald-500/20 shrink-0">
+        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-emerald-400">
+          <i class="fa-solid text-xl"
+             :class="currentModule === 'mod_form_input_jamaah' ? 'fa-file-signature' : 
+                    (currentModule === 'mod_data_jamaah' ? 'fa-table-list' : 
+                    (currentModule === 'mod_rooming_list' ? 'fa-bed' : 
+                    (currentModule === 'mod_pembayaran_jamaah' ? 'fa-file-invoice-dollar' : 'fa-user-pen')))"></i>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-extrabold text-slate-100 tracking-tight"
+              x-text="currentModule === 'mod_form_input_jamaah' ? 'Form Input Jamaah' : 
+                     (currentModule === 'mod_data_jamaah' ? 'Data & Rekapitulasi Jamaah' : 
+                     (currentModule === 'mod_rooming_list' ? 'Rooming List & Penempatan Kamar' : 
+                     (currentModule === 'mod_pembayaran_jamaah' ? 'Pembayaran & Kwitansi Jamaah' : 'Pendaftaran & Penempatan Kamar Jamaah')))">
+            Pendaftaran & Penempatan Kamar Jamaah
+          </h2>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono"
+                x-text="currentModule || 'mod_input_jamaah'">mod_input_jamaah</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5"
+           x-text="currentModule === 'mod_form_input_jamaah' ? 'Formulir entry data pendaftaran jamaah umrah baru' : 
+                  (currentModule === 'mod_data_jamaah' ? 'Daftar rekapitulasi data jamaah terdaftar, pencarian & export' : 
+                  (currentModule === 'mod_rooming_list' ? 'Pengaturan alokasi penempatan kamar jamaah (Makkah & Madinah) & cetak rooming list' : 
+                  (currentModule === 'mod_pembayaran_jamaah' ? 'Pencatatan riwayat pembayaran, sisa tagihan & cetak kwitansi jamaah' : 'Input biodata jamaah umrah, kelola rooming list & cetak kwitansi')))">
+        </p>
+      </div>
+    </div>
+
+    <!-- Stats summary badges -->
+    <div class="flex items-center gap-3 z-10 overflow-x-auto w-full lg:w-auto pb-1 lg:pb-0">
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-medium">Total Jamaah</div>
+          <div class="text-xs font-bold text-slate-100" x-text="jamaahList.length + ' Orang'">0 Orang</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-person text-sm"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-medium">Laki-laki</div>
+          <div class="text-xs font-bold text-slate-100" x-text="countGender('Laki-laki') + ' Pax'">0 Pax</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-person-dress text-sm"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-medium">Perempuan</div>
+          <div class="text-xs font-bold text-slate-100" x-text="countGender('Perempuan') + ' Pax'">0 Pax</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-hotel"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-medium">Terisi Kamar</div>
+          <div class="text-xs font-bold text-slate-100" x-text="countAssignedRooms() + ' Jamaah'">0 Jamaah</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar Actions -->
+  <div x-show="currentModule !== 'mod_form_input_jamaah' && currentModule !== 'mod_data_jamaah'" class="bg-slate-900/80 border border-slate-800 p-2 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+    <!-- Title Label for standalone modules -->
+    <div class="px-2 flex items-center gap-2 font-bold text-slate-200 text-xs">
+      <i class="fa-solid text-emerald-400 text-sm"
+         :class="currentModule === 'mod_form_input_jamaah' ? 'fa-file-signature' : 
+                (currentModule === 'mod_data_jamaah' ? 'fa-table-list' : 
+                (currentModule === 'mod_rooming_list' ? 'fa-bed' : 
+                (currentModule === 'mod_pembayaran_jamaah' ? 'fa-file-invoice-dollar' : 'fa-list')))"></i>
+      <span x-text="currentModule === 'mod_form_input_jamaah' ? 'Formulir Entry Data Jamaah Baru' : 
+                   (currentModule === 'mod_data_jamaah' ? 'Tabel Rekapitulasi Data Jamaah' : 
+                   (currentModule === 'mod_rooming_list' ? 'Penempatan Kamar & Rooming List' : 
+                   (currentModule === 'mod_pembayaran_jamaah' ? 'Riwayat Pembayaran & Cetak Kwitansi' : 'Modul Jamaah')))"></span>
+    </div>
+
+    <!-- Search & Quick Action Buttons -->
+    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+      <!-- Search Input -->
+      <div class="relative flex-1 sm:w-60" x-show="activeSubTab !== 'form' && activeSubTab !== 'payment' && currentModule !== 'mod_pembayaran_jamaah'">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+        <input type="text" x-model="searchKeyword" @input="searchJamaahQuery = searchKeyword; if (typeof onSearchInputChange === 'function') onSearchInputChange()" placeholder="Cari Nama / NIK / Paspor..."
+          class="w-full pl-8 pr-3 py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition-all">
+      </div>
+
+      <button @click="resetForm(); if (typeof navigateToModule === 'function') { navigateToModule('mod_form_input_jamaah'); } else { activeSubTab = 'form'; }" x-show="activeSubTab !== 'form' && activeSubTab !== 'rooming' && activeSubTab !== 'payment' && currentModule !== 'mod_rooming_list' && currentModule !== 'mod_pembayaran_jamaah'"
+        class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+        <i class="fa-solid fa-plus"></i>
+        <span>Jamaah Baru</span>
+      </button>
+
+      <button @click="fetchJamaahData(true)"
+        class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all flex items-center gap-1.5 border border-slate-700">
+        <i class="fa-solid fa-rotate" :class="{'fa-spin': isLoading}"></i>
+        <span>Refresh</span>
+      </button>
+
+      <button @click="exportToExcel()" x-show="activeSubTab === 'table'"
+        class="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-medium transition-all flex items-center gap-1.5">
+        <i class="fa-solid fa-file-excel"></i>
+        <span>Export Excel</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SUB-TAB 1: FORM INPUT JAMAAH -->
+  <div x-show="activeSubTab === 'form' || currentModule === 'mod_form_input_jamaah'">
+    <?!= include('JamaahFormInputView'); ?>
+  </div>
+
+  <!-- SUB-TAB 2: TABEL DATA JAMAAH & REKAPITULASI -->
+  <div x-show="activeSubTab === 'table' || (currentModule === 'mod_data_jamaah' && activeSubTab !== 'form')">
+    <div class="space-y-6">
+
+      <!-- Header Bar Modul & Quick Actions -->
+      <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex items-center gap-3.5 z-10">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 via-teal-500 to-emerald-600 p-0.5 shadow-lg shadow-cyan-500/20 shrink-0">
+            <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-cyan-400">
+              <i class="fa-solid fa-table-list text-xl"></i>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-extrabold text-slate-100 tracking-tight">Data & Rekapitulasi Jamaah</h2>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">mod_data_jamaah</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Daftar rekapitulasi data jamaah terdaftar, pencarian cepat, filter & export Excel</p>
+          </div>
+        </div>
+
+        <!-- Quick Action Buttons & Search Box -->
+        <div class="flex flex-wrap items-center gap-2 z-10 w-full lg:w-auto justify-end">
+          <!-- Search Box Nama / NIK / Paspor -->
+          <div class="relative flex-1 sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <input type="text" x-model="searchKeyword" placeholder="Cari Nama / Ayah / NIK / Paspor..." class="w-full pl-8 pr-8 py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all">
+            <button x-show="searchKeyword" @click="searchKeyword = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <button @click="fetchJamaahData(true)" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all flex items-center gap-1.5 border border-slate-700">
+            <i class="fa-solid fa-rotate" :class="{'fa-spin': isLoading}"></i>
+            <span>Refresh</span>
+          </button>
+
+          <button @click="exportToExcel()" class="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-medium transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel"></i>
+            <span>Export Excel</span>
+          </button>
+
+          <button @click="resetForm(); if (typeof navigateToModule === 'function') { navigateToModule('mod_form_input_jamaah'); } else { activeSubTab = 'form'; }" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i>
+            <span>Jamaah Baru</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter & Sorting Strip -->
+      <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex flex-wrap items-center gap-3">
+          
+          <!-- Sort / Urutan Data -->
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-medium flex items-center gap-1">
+              <i class="fa-solid fa-arrow-down-short-wide text-cyan-400"></i> Urutkan:
+            </span>
+            <select x-model="sortBy" class="bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-amber-300 font-semibold focus:outline-none focus:border-cyan-400">
+              <option value="newest">📅 Terbaru (ID / Tanggal)</option>
+              <option value="oldest">⌛ Terlama (ID Ascending)</option>
+              <option value="name_asc">🔤 Nama Jamaah (A - Z)</option>
+              <option value="name_desc">🔤 Nama Jamaah (Z - A)</option>
+              <option value="tgl_daftar_desc">📆 Tgl Daftar Terbaru</option>
+              <option value="tgl_keberangkatan_asc">✈️ Tgl Keberangkatan Terdekat</option>
+            </select>
+          </div>
+
+          <!-- Filter Kantor -->
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-medium">Kantor:</span>
+            <select x-model="filterKantor" class="bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              <option value="Semua">Semua Cabang</option>
+              <template x-for="k in kantorOptions" :key="k">
+                <option :value="k" x-text="k"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Filter Paket (Searchable Dropdown) -->
+          <div class="relative flex items-center gap-2" @click.outside="isFilterPaketOpen = false">
+            <span class="text-slate-400 font-medium">Paket:</span>
+            <div class="relative min-w-[190px] sm:min-w-[230px]">
+              <button type="button" @click="isFilterPaketOpen = !isFilterPaketOpen; if (isFilterPaketOpen) { $nextTick(() => $refs.filterPaketSearchInput?.focus()); }"
+                class="w-full flex items-center justify-between gap-2 bg-slate-950 border border-slate-700/80 hover:border-emerald-500/50 rounded-lg px-2.5 py-1 text-xs text-left transition-all">
+                <span class="truncate" :class="filterPaket === 'Semua' ? 'text-slate-200' : 'text-emerald-400 font-bold'" x-text="filterPaket === 'Semua' ? 'Semua Paket' : filterPaket"></span>
+                <div class="flex items-center gap-1.5 text-slate-500 shrink-0">
+                  <i x-show="filterPaket !== 'Semua'" @click.stop="setFilterPaket('Semua')" class="fa-solid fa-xmark hover:text-slate-300 text-[10px] p-0.5 cursor-pointer" title="Reset filter paket"></i>
+                  <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="{ 'rotate-180': isFilterPaketOpen }"></i>
+                </div>
+              </button>
+
+              <!-- Dropdown Menu with Search Box -->
+              <div x-show="isFilterPaketOpen" x-transition.opacity.duration.150ms
+                class="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden text-xs">
+                <!-- Search Input inside Dropdown -->
+                <div class="p-2 border-b border-slate-800 bg-slate-950/80 relative">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-[11px]"></i>
+                  <input type="text" x-ref="filterPaketSearchInput" x-model="filterPaketSearch"
+                    @keydown.enter.prevent="selectFirstSearchedPaket()"
+                    @keydown.escape.prevent="isFilterPaketOpen = false"
+                    placeholder="Cari nama paket..."
+                    class="w-full pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-400">
+                  <button x-show="filterPaketSearch" @click="filterPaketSearch = ''" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+
+                <!-- Options List -->
+                <div class="max-h-56 overflow-y-auto divide-y divide-slate-800/40 p-1">
+                  <!-- Option Semua Paket -->
+                  <div @click="setFilterPaket('Semua')"
+                    class="px-3 py-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors hover:bg-slate-800/80"
+                    :class="filterPaket === 'Semua' ? 'bg-emerald-500/15 text-emerald-400 font-bold' : 'text-slate-300'">
+                    <span class="flex items-center gap-1.5">
+                      <i class="fa-solid fa-layer-group text-[10px] text-slate-500"></i>
+                      <span>Semua Paket</span>
+                    </span>
+                    <i x-show="filterPaket === 'Semua'" class="fa-solid fa-check text-emerald-400 text-xs"></i>
+                  </div>
+
+                  <!-- Filtered Paket List -->
+                  <template x-for="p in searchedFilterPaketOptions" :key="p">
+                    <div @click="setFilterPaket(p)"
+                      class="px-3 py-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors hover:bg-slate-800/80"
+                      :class="filterPaket === p ? 'bg-emerald-500/15 text-emerald-400 font-bold' : 'text-slate-300'">
+                      <span class="truncate pr-2" x-text="p"></span>
+                      <i x-show="filterPaket === p" class="fa-solid fa-check text-emerald-400 text-xs shrink-0"></i>
+                    </div>
+                  </template>
+
+                  <!-- Empty state if search has no match -->
+                  <div x-show="searchedFilterPaketOptions.length === 0" class="px-3 py-4 text-center text-slate-500 text-[11px]">
+                    <i class="fa-solid fa-box-open text-base mb-1 block text-slate-600"></i>
+                    Paket "<span class="text-slate-400" x-text="filterPaketSearch"></span>" tidak ditemukan
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Tipe Kamar -->
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-medium">Kamar:</span>
+            <select x-model="filterKamar" class="bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              <option value="Semua">Semua Kamar</option>
+              <option value="Quad">Quad (4 Pax)</option>
+              <option value="Triple">Triple (3 Pax)</option>
+              <option value="Double">Double (2 Pax)</option>
+            </select>
+          </div>
+
+          <!-- Filter Status -->
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-medium">Status:</span>
+            <select x-model="filterStatus" class="bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              <option value="Semua">Semua Status</option>
+              <option value="Terdaftar">Terdaftar</option>
+              <option value="Lunas">Lunas</option>
+              <option value="Visa Issued">Visa Issued</option>
+              <option value="Berangkat">Sudah Berangkat</option>
+              <option value="Batal">Batal / Cancelled</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Data Counter -->
+        <div class="text-slate-400 font-mono text-[11px] shrink-0">
+          Menampilkan <span class="text-emerald-400 font-bold" x-text="filteredJamaahList.length">0</span> data dari <span class="text-slate-200" x-text="jamaahList.length">0</span> total jamaah
+        </div>
+      </div>
+
+      <!-- Data Table Container -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-950/80 text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider text-[11px]">
+                <th class="py-3 px-4 w-12 text-center">No</th>
+                <th class="py-3 px-4 min-w-[200px]">ID & Nama Jamaah</th>
+                <th class="py-3 px-4 min-w-[150px]">NIK & No Paspor</th>
+                <th class="py-3 px-4 min-w-[140px]">Gender / Kontak</th>
+                <th class="py-3 px-4 min-w-[180px]">Jenis Paket & Keberangkatan</th>
+                <th class="py-3 px-4 min-w-[150px]">Kamar & Hotel</th>
+                <th class="py-3 px-4 text-center min-w-[110px]">Status</th>
+                <th class="py-3 px-4 text-center min-w-[150px]">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+              <template x-for="(item, idx) in filteredJamaahList" :key="item.id || idx">
+                <tr class="hover:bg-slate-800/40 transition-colors">
+                  <td class="py-3 px-4 text-center font-mono text-slate-500" x-text="idx + 1"></td>
+                  
+                  <!-- Nama Jamaah & ID -->
+                  <td class="py-3 px-4 font-medium text-slate-100">
+                    <div class="font-bold flex items-center gap-1.5 text-slate-100">
+                      <span x-text="item.namaLengkap"></span>
+                    </div>
+                    <div class="text-[11px] text-emerald-400 font-mono font-semibold" x-text="item.id"></div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">bin/binti: <span x-text="item.namaAyah || '-'"></span></div>
+                  </td>
+
+                  <!-- NIK & Paspor -->
+                  <td class="py-3 px-4 font-mono text-[11px]">
+                    <div class="text-slate-200" x-text="item.noKtp || '-'"></div>
+                    <div class="text-cyan-400 font-semibold" x-text="item.noPassport ? 'Pass: ' + item.noPassport : 'Paspor: -'"></div>
+                  </td>
+
+                  <!-- Gender & Kontak -->
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-2 text-xs">
+                      <span class="w-2 h-2 rounded-full" :class="item.jenisKelamin === 'Laki-laki' ? 'bg-cyan-400' : 'bg-pink-400'"></span>
+                      <span x-text="item.jenisKelamin || '-'"></span>
+                    </div>
+                    <div class="text-[11px] text-slate-300 font-mono mt-0.5" x-text="item.noHp || '-'"></div>
+                    <div class="text-[10px] text-slate-400" x-text="item.kantorCabang || '-'"></div>
+                  </td>
+
+                  <!-- Jenis Paket & Keberangkatan -->
+                  <td class="py-3 px-4">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" x-text="item.jenisPaket || '-'"></span>
+                    <div class="text-[11px] text-slate-300 mt-1 flex items-center gap-1">
+                      <i class="fa-regular fa-calendar-days text-[10px] text-slate-400"></i>
+                      <span x-text="formatDateIndoStr(item.rencanaKeberangkatan || item.tglKeberangkatan)"></span>
+                    </div>
+                  </td>
+
+                  <!-- Penempatan Kamar -->
+                  <td class="py-3 px-4">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" :class="item.tipeKamar === 'Double' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : (item.tipeKamar === 'Triple' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20')" x-text="item.tipeKamar || 'Quad'"></span>
+                    <div class="text-[10px] text-slate-400 mt-1">
+                      <span x-text="item.hotelMakkah ? 'Mkk: ' + (item.noKamarMakkah || '-') : ''"></span>
+                    </div>
+                  </td>
+
+                  <!-- Status -->
+                  <td class="py-3 px-4 text-center">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold"
+                      :class="{
+                        'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30': item.status === 'Lunas' || item.status === 'Visa Issued',
+                        'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30': item.status === 'Terdaftar',
+                        'bg-purple-500/10 text-purple-400 border border-purple-500/30': item.status === 'Berangkat',
+                        'bg-rose-500/10 text-rose-400 border border-rose-500/30': item.status === 'Batal'
+                      }" x-text="item.status || 'Terdaftar'">
+                    </span>
+                  </td>
+
+                  <!-- Action Buttons -->
+                  <td class="py-3 px-4 text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                      <!-- Cetak Surat Button -->
+                      <button @click="printSuratPendaftaran(item)" title="Cetak Surat Pendaftaran Umrah" class="w-7 h-7 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-print text-xs"></i>
+                      </button>
+
+                      <!-- Edit Jamaah Button -->
+                      <button @click="editJamaah(item)" title="Edit Data Jamaah" class="w-7 h-7 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                      </button>
+
+                      <!-- Rooming Button -->
+                      <button @click="openRoomingModal(item)" title="Set Penempatan Kamar" class="w-7 h-7 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-bed text-xs"></i>
+                      </button>
+
+                      <!-- Pembayaran Button -->
+                      <button @click="selectJamaahForPayment(item); if (typeof navigateToModule === 'function') { navigateToModule('mod_pembayaran_jamaah'); } else { activeSubTab = 'payment'; }" title="Kelola Pembayaran Jamaah" class="w-7 h-7 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-file-invoice-dollar text-xs"></i>
+                      </button>
+
+                      <!-- Input Kelengkapan Data Umrah Button -->
+                      <button @click="openKelengkapanForJamaah(item)" title="Input Kelengkapan Data Umrah" class="w-7 h-7 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-passport text-xs"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <!-- Loading State -->
+              <template x-if="isLoading">
+                <tr>
+                  <td colspan="8" class="py-12 text-center text-cyan-400">
+                    <div class="flex flex-col items-center justify-center gap-3">
+                      <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i>
+                      <p class="text-xs font-bold tracking-wide">Memuat Data Jamaah dari Google Sheet...</p>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <!-- Empty State -->
+              <template x-if="!isLoading && filteredJamaahList.length === 0">
+                <tr>
+                  <td colspan="8" class="py-12 text-center text-slate-500">
+                    <div class="flex flex-col items-center justify-center gap-2">
+                      <i class="fa-solid fa-users-slash text-3xl text-slate-600"></i>
+                      <p class="text-xs font-semibold text-slate-400">Tidak ada data jamaah yang sesuai dengan pencarian atau filter Anda.</p>
+                      <p class="text-[11px] text-slate-500">Coba ubah kata kunci pencarian nama/NIK atau sesuaikan filter urutan/cabang.</p>
+                      <button @click="filterKantor = 'Semua'; filterPaket = 'Semua'; filterPaketSearch = ''; isFilterPaketOpen = false; filterKamar = 'Semua'; filterStatus = 'Semua'; searchKeyword = '';" class="mt-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 text-xs font-medium transition-all">
+                        Reset Semua Filter
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SUB-TAB 3: ROOMING LIST & PENEMPATAN KAMAR -->
+  <div x-show="activeSubTab === 'rooming'" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-bed text-amber-400"></i>
+        <h3 class="text-sm font-bold text-slate-100">Manajemen Rooming List & Penempatan Kamar</h3>
+      </div>
+      <div class="flex items-center gap-3">
+        <label class="text-xs text-slate-400">Filter Kota Hotel:</label>
+        <select x-model="selectedCityRooming" class="px-3 py-1 bg-slate-950 border border-slate-700 rounded-lg text-xs text-amber-300 font-bold">
+          <option value="Makkah">Hotel Makkah</option>
+          <option value="Madinah">Hotel Madinah</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Rooming List Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <template x-for="(group, roomNo) in groupedRoomingList" :key="roomNo">
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-3 relative">
+          <!-- Room Header -->
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div>
+              <span class="text-xs font-extrabold text-amber-400 font-mono" x-text="'No. Kamar: ' + roomNo"></span>
+              <div class="text-[10px] text-slate-400" x-text="group.hotel || 'Hotel Belum Diset'"></div>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20"
+              x-text="group.tipeKamar + ' (' + group.members.length + '/' + (group.tipeKamar === 'Quad' ? 4 : (group.tipeKamar === 'Triple' ? 3 : 2)) + ' Pax)'">
+            </span>
+          </div>
+
+          <!-- Occupant Members -->
+          <div class="space-y-1.5">
+            <template x-for="(m, mIdx) in group.members" :key="m.id">
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" :class="m.jenisKelamin === 'Laki-laki' ? 'bg-cyan-400' : 'bg-pink-400'"></span>
+                  <div>
+                    <div class="font-semibold text-slate-100" x-text="m.namaLengkap"></div>
+                    <div class="text-[10px] text-slate-400 font-mono" x-text="m.id"></div>
+                  </div>
+                </div>
+                <button @click="openRoomingModal(m)" class="text-[10px] text-amber-400 hover:underline">
+                  Ubah
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="Object.keys(groupedRoomingList).length === 0" class="col-span-full p-8 text-center text-slate-500">
+        <i class="fa-solid fa-hotel text-3xl mb-2"></i>
+        <p class="text-xs">Belum ada kamar yang di-assign untuk kota ini. Klik ikon bed di tabel jamaah untuk menentukan penempatan kamar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL QUICK ROOM ASSIGNMENT -->
+  <div x-show="showRoomModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" x-transition x-cloak>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h4 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+          <i class="fa-solid fa-bed"></i>
+          <span>Penempatan Kamar Jamaah</span>
+        </h4>
+        <button @click="showRoomModal = false" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div class="font-bold text-slate-100" x-text="selectedJamaahForRoom.namaLengkap"></div>
+          <div class="text-[11px] text-emerald-400 font-mono" x-text="selectedJamaahForRoom.id"></div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">Tipe Kamar</label>
+          <select x-model="roomModalData.tipeKamar" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-amber-300 font-bold">
+            <option value="Quad">Quad (4 Pax)</option>
+            <option value="Triple">Triple (3 Pax)</option>
+            <option value="Double">Double (2 Pax)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Hotel Makkah</label>
+            <input type="text" x-model="roomModalData.hotelMakkah" placeholder="Nama Hotel" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">No. Kamar Makkah</label>
+            <input type="text" x-model="roomModalData.noKamarMakkah" placeholder="Nomor Kamar" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-mono">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Hotel Madinah</label>
+            <input type="text" x-model="roomModalData.hotelMadinah" placeholder="Nama Hotel" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">No. Kamar Madinah</label>
+            <input type="text" x-model="roomModalData.noKamarMadinah" placeholder="Nomor Kamar" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-mono">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+        <button @click="showRoomModal = false" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">
+          Batal
+        </button>
+        <button @click="submitRoomAssignment()" :disabled="isSavingRoomModal" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
+          <i class="fa-solid" :class="isSavingRoomModal ? 'fa-spinner fa-spin text-slate-950' : 'fa-floppy-disk'"></i>
+          <span x-text="isSavingRoomModal ? 'Menyimpan...' : 'Simpan Kamar'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================================ -->
+  <!-- TAB 4: UPDATE PEMBAYARAN & KWITANSI JAMAAH (activeSubTab === 'payment') -->
+  <!-- ============================================================================ -->
+  <div x-show="activeSubTab === 'payment'" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-6" x-transition>
+    
+    <!-- Top Selector Bar: Pilih & Cari Jamaah Terdaftar -->
+    <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 shadow-lg">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-user-check"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-100">Pilih Jamaah Terdaftar</h3>
+          <p class="text-xs text-slate-400">Cari nama jamaah atau pilih langsung dari database sheet Data Jamaah</p>
+        </div>
+      </div>
+
+      <!-- Control Group: Search Input + Filtered Select Dropdown -->
+      <div class="flex flex-col sm:flex-row items-center gap-2.5 w-full lg:w-auto">
+        <!-- Input Search Nama Jamaah -->
+        <div class="relative w-full sm:w-64">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-emerald-400">
+            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+          </span>
+          <input type="text" x-model="searchJamaahQuery" placeholder="Cari Nama Jamaah / ID..."
+            class="w-full pl-8 pr-8 py-2 bg-slate-900 border border-slate-700/90 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 transition-all shadow-inner">
+          <button type="button" x-show="searchJamaahQuery" @click="searchJamaahQuery = ''" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-500 hover:text-slate-300">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Selector Dropdown (Filtered) -->
+        <div class="w-full sm:w-72 relative">
+          <select x-model="selectedJamaahIdForPayment" @change="onPaymentJamaahChange()"
+            class="w-full pl-3 pr-8 py-2 bg-slate-900 border border-slate-700/90 rounded-xl text-xs font-semibold text-emerald-300 focus:outline-none focus:border-emerald-400 transition-all cursor-pointer">
+            <option value="">-- Pilih Jamaah (<span x-text="filteredJamaahListForPayment().length"></span>) --</option>
+            <template x-for="item in filteredJamaahListForPayment()" :key="item.id">
+              <option :value="item.id" x-text="(item.namaLengkap || item.nama || 'Jamaah') + ' (' + (item.id || item['ID Jamaah']) + ')'"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selected Jamaah Card Summary & Quick Financial Stats -->
+    <template x-if="selectedJamaahForPayment">
+      <div class="space-y-4">
+        <!-- Profile Header & Badge Status -->
+        <div class="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xl font-bold font-mono">
+              <span x-text="selectedJamaahForPayment.namaLengkap ? selectedJamaahForPayment.namaLengkap.charAt(0).toUpperCase() : 'J'"></span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="text-base font-extrabold text-slate-100" x-text="selectedJamaahForPayment.namaLengkap"></h2>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-800 text-emerald-400 border border-slate-700" x-text="selectedJamaahForPayment.id"></span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5" x-text="'NIK: ' + (selectedJamaahForPayment.noKtp || '-') + ' | HP: ' + (selectedJamaahForPayment.noHp || '-') + ' | Paket: ' + (selectedJamaahForPayment.jenisPaket || '-')"></p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="px-3 py-1.5 rounded-xl text-xs font-bold border"
+              :class="getPaymentStatusBadgeClass(calculateJamaahPaymentSummary().status)">
+              <i class="fa-solid fa-shield-halved mr-1"></i>
+              <span x-text="calculateJamaahPaymentSummary().status"></span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 4 Cards Stats Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <!-- Estimasi Paket -->
+          <div class="bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl shadow-md space-y-1">
+            <div class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+              <span>Estimasi Harga Paket</span>
+              <i class="fa-solid fa-box-archive text-emerald-400 text-xs"></i>
+            </div>
+            <div class="text-sm sm:text-base font-extrabold text-slate-100 font-mono" x-text="formatRupiah(calculateJamaahPaymentSummary().estimasiPaket)">Rp 0</div>
+            <div class="text-[10px] text-slate-500" x-text="'Tipe Kamar: ' + (selectedJamaahForPayment.tipeKamar || 'Quad')"></div>
+          </div>
+
+          <!-- Total Dibayar -->
+          <div class="bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl shadow-md space-y-1">
+            <div class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+              <span>Total Telah Dibayar</span>
+              <i class="fa-solid fa-circle-check text-cyan-400 text-xs"></i>
+            </div>
+            <div class="text-sm sm:text-base font-extrabold text-cyan-400 font-mono" x-text="formatRupiah(calculateJamaahPaymentSummary().totalPaid)">Rp 0</div>
+            <div class="text-[10px] text-slate-500" x-text="calculateJamaahPaymentSummary().historyCount + 'x Transaksi Masuk'"></div>
+          </div>
+
+          <!-- Sisa Tagihan -->
+          <div class="bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl shadow-md space-y-1">
+            <div class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+              <span>Sisa Tagihan</span>
+              <i class="fa-solid fa-clock-rotate-left text-amber-400 text-xs"></i>
+            </div>
+            <div class="text-sm sm:text-base font-extrabold font-mono"
+              :class="calculateJamaahPaymentSummary().sisaTagihan <= 0 ? 'text-emerald-400' : 'text-amber-400'"
+              x-text="formatRupiah(calculateJamaahPaymentSummary().sisaTagihan)">Rp 0</div>
+            <div class="text-[10px] text-slate-500" x-text="calculateJamaahPaymentSummary().sisaTagihan <= 0 ? 'Tagihan Telah Lunas' : 'Belum Lunas'"></div>
+          </div>
+
+          <!-- Status Keberangkatan -->
+          <div class="bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl shadow-md space-y-1">
+            <div class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+              <span>Tgl Keberangkatan</span>
+              <i class="fa-solid fa-plane-departure text-purple-400 text-xs"></i>
+            </div>
+            <div class="text-xs sm:text-sm font-bold text-purple-300 font-mono" x-text="formatIndoDate(selectedJamaahForPayment.tglKeberangkatan) || 'Belum Dijadwalkan'">-</div>
+            <div class="text-[10px] text-slate-500" x-text="'Cabang: ' + (selectedJamaahForPayment.kantorCabang || 'Pusat')"></div>
+          </div>
+        </div>
+
+        <!-- Main Workspace Grid: Form Entry Pembayaran & History Table -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- LEFT COLUMN: FORM ENTRY PEMBAYARAN (5 cols) -->
+          <div class="lg:col-span-5 bg-slate-950/90 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-plus-circle text-emerald-400"></i>
+                <span>Form Update Pembayaran Baru</span>
+              </h4>
+              <span class="text-[10px] font-mono text-slate-400" x-text="'Tgl: ' + paymentForm.tglBayar"></span>
+            </div>
+
+            <form @submit.prevent="submitPaymentForm()" class="space-y-3.5">
+              
+              <!-- Nominal Pembayaran -->
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300 mb-1">Nominal Pembayaran (Rp) *</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-400">Rp</span>
+                  <input type="number" x-model.number="paymentForm.jumlahPembayaran" min="1000" placeholder="0" required
+                    class="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-sm font-bold text-emerald-300 font-mono focus:outline-none focus:border-emerald-400">
+                </div>
+                <!-- Quick Amount Buttons -->
+                <div class="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                  <button type="button" @click="paymentForm.jumlahPembayaran = 5000000" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono border border-slate-700">5 Juta</button>
+                  <button type="button" @click="paymentForm.jumlahPembayaran = 10000000" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono border border-slate-700">10 Juta</button>
+                  <button type="button" @click="paymentForm.jumlahPembayaran = 15000000" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 font-mono border border-slate-700">15 Juta</button>
+                  <button type="button" @click="paymentForm.jumlahPembayaran = calculateJamaahPaymentSummary().sisaTagihan" x-show="calculateJamaahPaymentSummary().sisaTagihan > 0" class="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-[10px] text-emerald-300 font-mono border border-emerald-500/30 font-bold">Pelunasan</button>
+                </div>
+                <!-- Terbilang preview -->
+                <p class="text-[10.5px] italic text-slate-400 mt-1 font-sans" x-text="'Terbilang: ' + terbilangIndo(paymentForm.jumlahPembayaran)"></p>
+              </div>
+
+              <!-- Tipe & Metode Pembayaran Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1">Tipe Pembayaran *</label>
+                  <select x-model="paymentForm.tipePembayaran" required
+                    class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400">
+                    <option value="DP / Uang Muka">DP / Uang Muka</option>
+                    <option value="Cicilan">Cicilan Keberangkatan</option>
+                    <option value="Pelunasan">Pelunasan Akhir</option>
+                    <option value="Tambahan Biaya">Tambahan Biaya (Paspor/LA)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1">Metode Pembayaran *</label>
+                  <select x-model="paymentForm.metodePembayaran" required
+                    class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400">
+                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="Tunai / Cash">Tunai / Cash</option>
+                    <option value="EDC / Debit">EDC / Debit Card</option>
+                    <option value="QRIS">QRIS / Online</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Bank & No Ref -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1">Bank / Rekening Tujuan</label>
+                  <select x-model="paymentForm.namaBank"
+                    class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400">
+                    <option value="BSI (Bank Syariah Indonesia)">BSI (Bank Syariah Indonesia)</option>
+                    <option value="Bank Mandiri">Bank Mandiri</option>
+                    <option value="BCA">BCA</option>
+                    <option value="BRI">BRI</option>
+                    <option value="Tunai / Kasir Fath Indah">Tunai / Kasir Fath Indah</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1">No. Referensi / Bukti Transfer</label>
+                  <input type="text" x-model="paymentForm.noReferensi" placeholder="Contoh: TRF-8899201"
+                    class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono">
+                </div>
+              </div>
+
+              <!-- Tanggal Bayar -->
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Tanggal Transaksi Bayar *</label>
+                <input type="date" x-model="paymentForm.tglBayar" required
+                  class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400">
+              </div>
+
+              <!-- Upload Bukti Transfer dari Drive Lokal -->
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                  <span class="flex items-center gap-1.5 text-cyan-300">
+                    <i class="fa-solid fa-cloud-arrow-up text-cyan-400 text-xs"></i>
+                    <span>Upload Bukti Transfer (Drive Lokal)</span>
+                  </span>
+                  <button type="button" @click="toggleManualUrlInput = !toggleManualUrlInput" class="text-[10px] text-slate-400 hover:text-cyan-300 underline font-normal">
+                    <span x-text="toggleManualUrlInput ? 'Unggah dari Drive Lokal' : 'Input URL Manual'"></span>
+                  </button>
+                </label>
+
+                <template x-if="!toggleManualUrlInput">
+                  <div class="relative border border-dashed rounded-xl p-3 text-center transition-all cursor-pointer bg-slate-900 hover:bg-slate-950 flex flex-col items-center justify-center gap-1.5"
+                    :class="paymentFileSelected ? 'border-emerald-500/60 bg-emerald-950/20' : 'border-slate-700 hover:border-cyan-400/60'"
+                    @click="$refs.paymentFileInput.click()">
+                    
+                    <input type="file" x-ref="paymentFileInput" @change="handlePaymentFileSelect($event)" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+
+                    <template x-if="!paymentFileSelected">
+                      <div class="space-y-1">
+                        <i class="fa-solid fa-file-arrow-up text-cyan-400 text-xl"></i>
+                        <p class="text-[11px] font-bold text-slate-200">Klik di sini untuk memilih Bukti Transfer dari Drive Lokal</p>
+                        <p class="text-[10px] text-slate-400">Format: PNG, JPG, JPEG, PDF (Maks 10 MB) | Format Nama: "ID Kwitansi - Nama Jamaah.ext"</p>
+                      </div>
+                    </template>
+
+                    <template x-if="paymentFileSelected">
+                      <div class="flex items-center justify-between w-full bg-slate-950 p-2 rounded-lg border border-emerald-500/40 text-xs">
+                        <div class="flex items-center gap-2 truncate">
+                          <i class="fa-solid fa-file-invoice text-emerald-400 text-sm"></i>
+                          <span class="font-bold text-emerald-300 truncate" x-text="paymentFileSelected.name"></span>
+                        </div>
+                        <button type="button" @click.stop="paymentFileSelected = null; if($refs.paymentFileInput) $refs.paymentFileInput.value = ''" class="text-rose-400 hover:text-rose-300 text-[10px] font-bold underline shrink-0 ml-2">
+                          Hapus
+                        </button>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+
+                <template x-if="toggleManualUrlInput">
+                  <div>
+                    <input type="url" x-model="paymentForm.uploadBuktiTransfer" placeholder="https://drive.google.com/file/d/..."
+                      class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Masukkan link URL/Google Drive bukti transfer manual (opsional)</p>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Catatan -->
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Catatan / Keterangan</label>
+                <textarea x-model="paymentForm.keterangan" rows="2" placeholder="Catatan opsional pembayaran..."
+                  class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 resize-none"></textarea>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="pt-2">
+                <button type="submit" :disabled="isSubmittingPayment"
+                  class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-slate-950 font-extrabold text-xs tracking-wide shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-floppy-disk" :class="{'fa-spin': isSubmittingPayment}"></i>
+                  <span x-text="isSubmittingPayment ? 'Menyimpan Pembayaran...' : 'Simpan & Rekam Pembayaran'">Simpan & Rekam Pembayaran</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- RIGHT COLUMN: HISTORY TABEL PEMBAYARAN (7 cols) -->
+          <div class="lg:col-span-7 bg-slate-950/90 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+                <span>Database History Pembayaran</span>
+              </h4>
+              <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 border border-slate-700 text-cyan-300 font-mono"
+                x-text="currentJamaahPaymentHistory.length + ' Transaksi'"></span>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto border border-slate-800 rounded-xl">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-900 text-slate-400 border-b border-slate-800 text-[11px]">
+                    <th class="p-2.5 font-semibold">No. Kwitansi</th>
+                    <th class="p-2.5 font-semibold">Tanggal</th>
+                    <th class="p-2.5 font-semibold">Nominal (Rp)</th>
+                    <th class="p-2.5 font-semibold">Tipe & Metode</th>
+                    <th class="p-2.5 font-semibold text-center">Aksi Kwitansi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                  <template x-for="item in currentJamaahPaymentHistory" :key="item.idKwitansi">
+                    <tr class="hover:bg-slate-900/50 transition-colors">
+                      <td class="p-2.5 font-mono text-emerald-400 font-bold text-[11px]" x-text="item.idKwitansi"></td>
+                      <td class="p-2.5 text-slate-300 text-[11px]" x-text="formatIndoDate(item.tglBayar || item.timestamp)"></td>
+                      <td class="p-2.5 font-mono font-extrabold text-slate-100 text-[11px]" x-text="formatRupiah(item.jumlahPembayaran || item.nominal || 0)"></td>
+                      <td class="p-2.5">
+                        <div class="text-[11px] font-semibold text-slate-200" x-text="item.tipePembayaran"></div>
+                        <div class="text-[10px] text-slate-400" x-text="item.metodePembayaran + (item.namaBank ? ' (' + item.namaBank + ')' : '')"></div>
+                      </td>
+                      <td class="p-2.5 text-center">
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                          <template x-if="item.uploadBuktiTransfer">
+                            <a :href="item.uploadBuktiTransfer" target="_blank" rel="noopener noreferrer" title="Lihat Bukti Transfer"
+                              class="px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm">
+                              <i class="fa-brands fa-google-drive text-cyan-400"></i>
+                              <span>Lihat Bukti TF</span>
+                            </a>
+                          </template>
+                          <button @click="openKwitansiModal(item)" title="Cetak Kwitansi"
+                            class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-receipt"></i>
+                            <span>Kwitansi</span>
+                          </button>
+                          <button x-show="canDeletePayment(item)" @click="confirmDeletePayment(item)" title="Hapus Pembayaran"
+                            class="p-1 px-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-bold transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+
+                  <template x-if="currentJamaahPaymentHistory.length === 0">
+                    <tr>
+                      <td colspan="5" class="p-6 text-center text-slate-500 italic text-xs">
+                        Belum ada riwayat pembayaran tercatat untuk jamaah ini.
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ============================================================================ -->
+  <!-- PRINTABLE OFFICIAL RECEIPT MODAL (KWITANSI PEMBAYARAN BERLOGO FATH INDAH) -->
+  <!-- ============================================================================ -->
+  <div x-show="showKwitansiModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto" x-transition x-cloak>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      
+      <!-- Modal Header Bar (No Print) -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 no-print-area">
+        <h4 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+          <i class="fa-solid fa-receipt"></i>
+          <span>Cetak Kwitansi Pembayaran Resmi</span>
+        </h4>
+        <div class="flex items-center gap-2">
+          <button @click="triggerBrowserPrint()" class="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-md">
+            <i class="fa-solid fa-print"></i> Cetak Kwitansi / PDF
+          </button>
+          <button @click="showKwitansiModal = false" class="text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- THE PRINTABLE KWITANSI CONTAINER (A5 / Portrait Document) -->
+      <div id="printableKwitansiDoc" class="bg-white text-slate-900 p-6 rounded-lg shadow-lg border border-slate-300 font-sans text-xs space-y-4 leading-normal">
+        
+        <!-- Header Kop Surat Kwitansi -->
+        <div class="flex items-center justify-between border-b-2 border-emerald-950 pb-3">
+          <div class="flex items-center gap-3">
+            <img src="https://lh3.googleusercontent.com/d/1MyvGCEnsnt_GhZBRDycxisWDDKbGfMUV" alt="Logo Fath Indah" class="h-14 w-auto object-contain shrink-0" onerror="this.onerror=null; this.src='https://drive.google.com/uc?export=view&id=1MyvGCEnsnt_GhZBRDycxisWDDKbGfMUV';">
+            <div>
+              <h1 class="text-base font-black tracking-tight text-emerald-950 uppercase leading-none">PT FATH INDAH TRAVEL</h1>
+              <p class="text-[9.5px] text-slate-700 font-bold mt-0.5">Penyelenggara Perjalanan Ibadah Umrah & Haji Khusus Resmi</p>
+              <p class="text-[8.5px] text-slate-500">Izin Kemenag RI No. 123/2022 | Head Office: Jl. Utama No. 45, Jakarta | Telp: (021) 555-0199</p>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="px-2.5 py-0.5 bg-emerald-900 text-white rounded font-black text-[10px] uppercase tracking-wider">
+              KWITANSI PEMBAYARAN
+            </div>
+            <p class="text-[9px] text-slate-700 font-mono font-bold mt-0.5" x-text="'No: ' + printKwitansiData.idKwitansi"></p>
+            <p class="text-[9px] text-slate-600 font-medium" x-text="'Tgl: ' + formatIndoDate(printKwitansiData.tglBayar)"></p>
+          </div>
+        </div>
+
+        <!-- Detail Rincian Kwitansi -->
+        <table class="w-full text-xs border-collapse space-y-2">
+          <tbody>
+            <tr class="border-b border-slate-200">
+              <td class="py-1.5 font-bold text-slate-600 w-36">Telah Diterima Dari</td>
+              <td class="py-1.5 font-bold text-slate-950 font-mono text-sm" x-text="': ' + (printKwitansiData.namaJamaah || '-')"></td>
+            </tr>
+            <tr class="border-b border-slate-200">
+              <td class="py-1.5 font-semibold text-slate-600">ID / NIK Jamaah</td>
+              <td class="py-1.5 font-medium text-slate-800" x-text="': ' + (printKwitansiData.idJamaah || '-') + ' / NIK: ' + (printKwitansiData.noKtp || '-')"></td>
+            </tr>
+            <tr class="border-b border-slate-200">
+              <td class="py-1.5 font-semibold text-slate-600">Untuk Pembayaran</td>
+              <td class="py-1.5 font-bold text-slate-900" x-text="': ' + (printKwitansiData.tipePembayaran || '-') + ' - ' + (printKwitansiData.jenisPaket || 'Paket Umrah')"></td>
+            </tr>
+            <tr class="border-b border-slate-200">
+              <td class="py-1.5 font-semibold text-slate-600">Metode & Bank</td>
+              <td class="py-1.5 font-medium text-slate-800" x-text="': ' + (printKwitansiData.metodePembayaran || '-') + (printKwitansiData.namaBank ? ' (' + printKwitansiData.namaBank + ')' : '') + (printKwitansiData.noReferensi ? ' | Ref: ' + printKwitansiData.noReferensi : '')"></td>
+            </tr>
+            <tr class="border-b border-slate-200">
+              <td class="py-1.5 font-semibold text-slate-600">Jumlah Uang (Rp)</td>
+              <td class="py-1.5 font-black text-emerald-900 text-base font-mono" x-text="': ' + formatRupiah(printKwitansiData.jumlahPembayaran)"></td>
+            </tr>
+            <tr class="border-b border-slate-200 bg-emerald-50/50">
+              <td class="py-2 font-semibold text-emerald-950 italic">Terbilang</td>
+              <td class="py-2 font-bold text-slate-900 italic text-xs leading-snug" x-text="': ' + terbilangIndo(printKwitansiData.jumlahPembayaran)"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Catatan & Tanda Tangan Section -->
+        <div class="pt-4 flex items-end justify-between text-xs">
+          <div class="text-[10px] text-slate-500 space-y-0.5 max-w-xs">
+            <p class="font-bold text-slate-700">Catatan Pembayaran:</p>
+            <p x-text="printKwitansiData.keterangan || 'Kwitansi ini sah sebagai bukti pembayaran resmi PT Fath Indah Travel.'"></p>
+            <template x-if="printKwitansiData.uploadBuktiTransfer || printKwitansiData['Upload Bukti Transfer']">
+              <p class="text-[9px] text-teal-800 font-semibold mt-1">
+                <span>Bukti Transfer: </span>
+                <a :href="printKwitansiData.uploadBuktiTransfer || printKwitansiData['Upload Bukti Transfer']" target="_blank" rel="noopener noreferrer" class="text-teal-700 underline font-mono">Lampiran Tersimpan di Cloud Drive 🔗</a>
+              </p>
+            </template>
+            <p class="italic text-[9px] text-slate-400 mt-1">Dicetak otomatis oleh Sistem Fath Indah Internal Portal</p>
+          </div>
+
+          <div class="text-center space-y-12">
+            <div>
+              <p class="text-[10px] text-slate-600">Jakarta, <span x-text="formatIndoDate(printKwitansiData.tglBayar)"></span></p>
+              <p class="text-[10px] font-bold text-slate-900">Kasir / Finance PT Fath Indah Travel</p>
+            </div>
+            <div>
+              <p class="font-bold text-slate-900 underline font-mono" x-text="'( ' + (typeof currentUser !== 'undefined' && currentUser && (currentUser.fullName || currentUser.FullName || currentUser.nama) ? (currentUser.fullName || currentUser.FullName || currentUser.nama) : (printKwitansiData.userInput && printKwitansiData.userInput !== 'Administrator Utama' && printKwitansiData.userInput !== 'Staf Finance' ? printKwitansiData.userInput : 'Fullname')) + ' )'"></p>
+              <p class="text-[9px] text-slate-500">Stempel & Tanda Tangan Resmi</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINTABLE DOCUMENT MODAL: SURAT PENDAFTARAN PERGI UMRAH -->
+  <div x-show="showPrintModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto" x-transition x-cloak>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 no-print-area">
+        <h4 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+          <i class="fa-solid fa-print"></i>
+          <span>Preview Surat Pendaftaran Pergi Umrah</span>
+        </h4>
+        <div class="flex items-center gap-2">
+          <button @click="triggerBrowserPrint()" class="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-md">
+            <i class="fa-solid fa-print"></i> Cetak / Export PDF
+          </button>
+          <button @click="showPrintModal = false" class="text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- THE PRINTABLE A4 CONTENT CONTAINER -->
+      <div id="printableSuratJamaahDoc" class="bg-white text-black p-5 rounded-lg shadow-lg border border-slate-300 font-sans text-[11px] space-y-3 leading-snug">
+        
+        <!-- Kop Surat Header -->
+        <div class="flex items-center justify-between border-b-2 border-slate-900 pb-2">
+          <div class="flex items-center gap-3">
+            <img src="https://lh3.googleusercontent.com/d/1MyvGCEnsnt_GhZBRDycxisWDDKbGfMUV" alt="Logo Fath Indah" class="h-14 w-auto object-contain shrink-0" onerror="this.onerror=null; this.src='https://drive.google.com/uc?export=view&id=1MyvGCEnsnt_GhZBRDycxisWDDKbGfMUV';">
+            <div>
+              <h1 class="text-lg font-black tracking-tight text-emerald-950 uppercase leading-none">PT FATH INDAH TRAVEL</h1>
+              <p class="text-[10px] text-slate-700 font-semibold mt-0.5">Penyelenggara Perjalanan Ibadah Umrah & Haji Khusus Resmi</p>
+              <p class="text-[9px] text-slate-500">Izin Kemenag RI No. 123/2022 | Jl. Utama No. 45, Jakarta | Telp: (021) 555-0199</p>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="px-2.5 py-0.5 bg-emerald-100 text-emerald-950 border border-emerald-300 rounded font-black text-[11px] uppercase tracking-wider">
+              SURAT PENDAFTARAN UMRAH
+            </div>
+            <p class="text-[9px] text-slate-600 font-mono mt-0.5" x-text="'No. Reg: ' + printData.id"></p>
+            <p class="text-[9px] text-slate-700 font-semibold" x-text="'Tanggal: ' + formatIndoDate(printData.tglDaftar)"></p>
+          </div>
+        </div>
+
+        <!-- Section 1: Data Diri Jamaah -->
+        <div class="space-y-1">
+          <h2 class="text-[10px] font-bold uppercase bg-slate-100 py-0.5 px-1.5 border-l-4 border-emerald-600 text-slate-900">
+            I. DATA PRIBADI JAMAAH
+          </h2>
+          <div class="flex items-start justify-between gap-3">
+            <table class="w-full text-[10.5px] border-collapse flex-1">
+              <tbody>
+                <tr class="border-b border-slate-200"><td class="w-32 py-0.5 font-semibold text-slate-700">Nama Lengkap</td><td class="py-0.5">: <span class="font-bold text-slate-950" x-text="printData.namaLengkap"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Nama Ayah Kandung</td><td class="py-0.5">: <span x-text="printData.namaAyah || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Jenis Kelamin</td><td class="py-0.5">: <span x-text="printData.jenisKelamin"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Tempat, Tgl Lahir</td><td class="py-0.5">: <span x-text="(printData.tempatLahir || '-') + ', ' + formatIndoDate(printData.tanggalLahir)"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">No. KTP / NIK</td><td class="py-0.5">: <span class="font-mono" x-text="printData.noKtp || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200">
+                  <td class="w-32 py-0.5 font-semibold text-slate-700 align-top">Alamat Lengkap</td>
+                  <td class="py-0.5 align-top">
+                    <div class="flex items-start gap-1">
+                      <span class="shrink-0">:</span>
+                      <div class="flex flex-col space-y-0.5 flex-1">
+                        <div class="font-medium text-slate-900" x-text="printData.alamatKtp || '-'"></div>
+                        <div class="text-slate-700" x-text="'Kel. ' + (printData.kelurahan || '-') + ', Kec. ' + (printData.kecamatan || '-')"></div>
+                        <div class="text-slate-700" x-text="(printData.kabupaten || '-') + (printData.provinsi ? ', ' + printData.provinsi : '') + (printData.kodePos ? ' (' + printData.kodePos + ')' : '')"></div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">No. HP / WhatsApp</td><td class="py-0.5">: <span class="font-mono font-semibold" x-text="printData.noHp || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Email Address</td><td class="py-0.5">: <span class="font-mono text-slate-900" x-text="printData.email || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Pekerjaan / Ukuran Baju</td><td class="py-0.5">: <span x-text="(printData.pekerjaan || '-') + ' | Ukuran Baju: ' + (printData.ukuranBaju || '-')"></span></td></tr>
+              </tbody>
+            </table>
+
+            <!-- Photo Frame 3x4 Compact -->
+            <div class="w-24 h-32 border-2 border-dashed border-slate-400 rounded p-0.5 flex flex-col items-center justify-center bg-slate-50 shrink-0 text-center relative overflow-hidden">
+              <template x-if="getFotoUrl(printData.fotoJamaah)">
+                <img :src="getFotoUrl(printData.fotoJamaah)" alt="Foto Jamaah" class="w-full h-full object-cover rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              </template>
+              <div class="flex flex-col items-center justify-center text-slate-400" :class="{'hidden': getFotoUrl(printData.fotoJamaah)}">
+                <i class="fa-solid fa-user text-2xl mb-0.5 text-slate-300"></i>
+                <span class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">PAS FOTO<br>3 x 4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2-Column Grid for Section II & III -->
+        <div class="grid grid-cols-2 gap-3">
+          
+          <!-- Left Column: INFORMASI PENDAFTARAN & PAKET -->
+          <div class="space-y-1">
+            <h2 class="text-[10px] font-bold uppercase bg-slate-100 py-0.5 px-1.5 border-l-4 border-emerald-600 text-slate-900">
+              II. INFORMASI PENDAFTARAN, PAKET & KEBERANGKATAN
+            </h2>
+            <table class="w-full text-[10px] border-collapse">
+              <tbody>
+                <tr class="border-b border-slate-200"><td class="w-28 py-0.5 font-semibold text-slate-700">Tanggal Daftar</td><td class="py-0.5">: <span class="font-bold text-slate-900" x-text="formatIndoDate(printData.tglDaftar)"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Referensi / Agent</td><td class="py-0.5">: <span x-text="printData.referensi || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Kantor Cabang</td><td class="py-0.5">: <span x-text="printData.kantorCabang || 'Pusat'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Jenis Paket Umrah</td><td class="py-0.5">: <span class="font-bold text-emerald-800" x-text="printData.jenisPaket || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Pilihan Tipe Kamar</td><td class="py-0.5">: <span class="font-bold text-amber-800" x-text="printData.tipeKamar || 'Quad'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Tgl Keberangkatan</td><td class="py-0.5">: <span class="font-bold text-slate-900" x-text="formatIndoDate(printData.tglKeberangkatan)"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Cara Pembayaran</td><td class="py-0.5">: <span x-text="printData.caraPembayaran || 'Tunai / Cash'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Status Jamaah</td><td class="py-0.5">: <span class="font-semibold text-emerald-800" x-text="printData.status || 'Terdaftar'"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Right Column: KEIMIGRASIAN -->
+          <div class="space-y-1">
+            <h2 class="text-[10px] font-bold uppercase bg-slate-100 py-0.5 px-1.5 border-l-4 border-emerald-600 text-slate-900">
+              III. DATA KEIMIGRASIAN
+            </h2>
+            <table class="w-full text-[10px] border-collapse">
+              <tbody>
+                <tr class="border-b border-slate-200"><td class="w-28 py-0.5 font-semibold text-slate-700">Nomor Passport</td><td class="py-0.5">: <span class="font-mono font-bold text-slate-950" x-text="printData.noPassport || 'Belum Dilengkapi'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Tempat Dikeluarkan</td><td class="py-0.5">: <span x-text="printData.tempatPaspor || '-'"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Tgl Dikeluarkan</td><td class="py-0.5">: <span x-text="formatIndoDate(printData.tglDikeluarkanPaspor)"></span></td></tr>
+                <tr class="border-b border-slate-200"><td class="py-0.5 font-semibold text-slate-700">Tgl Expired Paspor</td><td class="py-0.5">: <span x-text="formatIndoDate(printData.tglExpiredPaspor)"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- Section IV: Kelengkapan Dokumen -->
+        <div class="space-y-1">
+          <h2 class="text-[10px] font-bold uppercase bg-slate-100 py-0.5 px-1.5 border-l-4 border-emerald-600 text-slate-900">
+            IV. KELENGKAPAN DOKUMEN & LAMPIRAN
+          </h2>
+          <div class="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[10px] bg-slate-50/80 p-1.5 rounded border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-0.5 pr-1">
+              <span class="text-slate-700 font-medium">1. KTP</span>
+              <span class="font-bold text-[9.5px]" :class="(printData.uploadKtp && printData.uploadKtp.trim() !== '') ? 'text-emerald-700' : 'text-slate-500'" x-text="(printData.uploadKtp && printData.uploadKtp.trim() !== '') ? '[ Ada ]' : '[ Tidak Ada ]'"></span>
+            </div>
+            <div class="flex items-center justify-between border-b border-slate-200 pb-0.5 pr-1">
+              <span class="text-slate-700 font-medium">2. Paspor</span>
+              <span class="font-bold text-[9.5px]" :class="(printData.uploadPasport && printData.uploadPasport.trim() !== '') ? 'text-emerald-700' : 'text-slate-500'" x-text="(printData.uploadPasport && printData.uploadPasport.trim() !== '') ? '[ Ada ]' : '[ Tidak Ada ]'"></span>
+            </div>
+            <div class="flex items-center justify-between border-b border-slate-200 pb-0.5 pr-1">
+              <span class="text-slate-700 font-medium">3. Buku / Surat Nikah</span>
+              <span class="font-bold text-[9.5px]" :class="(printData.bukuNikah && printData.bukuNikah.trim() !== '') ? 'text-emerald-700' : 'text-slate-500'" x-text="(printData.bukuNikah && printData.bukuNikah.trim() !== '') ? '[ Ada ]' : '[ Tidak Ada ]'"></span>
+            </div>
+            <div class="flex items-center justify-between pr-1 pt-0.5">
+              <span class="text-slate-700 font-medium">4. Pas Foto Jamaah</span>
+              <span class="font-bold text-[9.5px]" :class="(printData.fotoJamaah && printData.fotoJamaah.trim() !== '') ? 'text-emerald-700' : 'text-slate-500'" x-text="(printData.fotoJamaah && printData.fotoJamaah.trim() !== '') ? '[ Ada ]' : '[ Tidak Ada ]'"></span>
+            </div>
+            <div class="flex items-center justify-between pr-1 pt-0.5">
+              <span class="text-slate-700 font-medium">5. Kartu Keluarga (KK)</span>
+              <span class="font-bold text-[9.5px]" :class="(printData.kartuKeluarga && printData.kartuKeluarga.trim() !== '') ? 'text-emerald-700' : 'text-slate-500'" x-text="(printData.kartuKeluarga && printData.kartuKeluarga.trim() !== '') ? '[ Ada ]' : '[ Tidak Ada ]'"></span>
+            </div>
+            <div class="flex items-center justify-between pr-1 pt-0.5">
+              <span class="text-slate-700 font-medium">6. Bukti Transfer</span>
+              <span class="font-bold text-[9.5px]" :class="(printData.uploadBuktiTransfer && printData.uploadBuktiTransfer.trim() !== '') ? 'text-emerald-700' : 'text-slate-500'" x-text="(printData.uploadBuktiTransfer && printData.uploadBuktiTransfer.trim() !== '') ? '[ Ada ]' : '[ Tidak Ada ]'"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Syarat & Ketentuan (Compact 2-Line) -->
+        <div class="border border-slate-300 p-2 rounded bg-slate-50/80 text-[9px] text-slate-700 space-y-0.5">
+          <div class="font-bold uppercase text-slate-900">Pernyataan & Persetujuan Jamaah:</div>
+          <p>1. Data yang tertera dalam formulir pendaftaran ini adalah benar dan sesuai dengan dokumen resmi (KTP/Paspor/KK).</p>
+          <p>2. Jamaah menyetujui seluruh ketentuan perjalanan, jadwal penerbangan, serta akomodasi hotel yang ditetapkan oleh Travel.</p>
+        </div>
+
+        <!-- Tanda Tangan Footer -->
+        <div class="pt-2 grid grid-cols-2 text-center text-[10px]">
+          <div>
+            <p class="text-slate-600">Petugas / Admin Pendaftar</p>
+            <div class="h-10"></div>
+            <p class="font-bold underline text-slate-900">( PT Fath Indah Travel )</p>
+          </div>
+          <div>
+            <p class="text-slate-600">Jamaah Pendaftar</p>
+            <div class="h-10"></div>
+            <p class="font-bold underline text-slate-900" x-text="'( ' + printData.namaLengkap + ' )'"></p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ALPINE JS CONTROLLER COMPONENT FOR MODUL JAMAAH -->
+<script>
+  function jamaahModuleApp() {
+    return {
+      activeSubTab: 'table', // 'form', 'table', 'rooming', 'payment'
+      isLoading: false,
+      isSubmitting: false,
+      isSavingRoomModal: false,
+
+      init() {
+        if (typeof this.$watch === 'function') {
+          this.$watch(() => this.currentModule, val => {
+            this.syncSubTabWithModule(val);
+          });
+        }
+        this.syncSubTabWithModule(this.currentModule || 'mod_data_jamaah');
+        this.fetchKantorList();
+        this.fetchPaketList();
+        this.fetchJamaahData();
+      },
+
+      formatDateIndoStr(dateInput, includeTime = false) {
+        if (!dateInput || dateInput === '-' || dateInput === 'null' || dateInput === 'undefined') return '-';
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        let d;
+        if (dateInput instanceof Date) {
+          d = dateInput;
+        } else {
+          let str = String(dateInput).trim();
+          if (!str || str === '-' || str === 'null') return '-';
+          d = new Date(str);
+
+          if (isNaN(d.getTime())) {
+            const timeParts = str.split(' ');
+            const dPart = timeParts[0];
+            const tPart = timeParts[1] || '00:00:00';
+
+            const sep = dPart.includes('-') ? '-' : (dPart.includes('/') ? '/' : '');
+            if (sep) {
+              const p = dPart.split(sep);
+              if (p.length === 3) {
+                let year, month, day;
+                if (p[0].length === 4) {
+                  year = parseInt(p[0], 10);
+                  month = parseInt(p[1], 10) - 1;
+                  day = parseInt(p[2], 10);
+                } else {
+                  day = parseInt(p[0], 10);
+                  month = parseInt(p[1], 10) - 1;
+                  year = parseInt(p[2], 10);
+                }
+                const tP = tPart.split(':');
+                const h = parseInt(tP[0] || 0, 10);
+                const m = parseInt(tP[1] || 0, 10);
+                const s = parseInt(tP[2] || 0, 10);
+                d = new Date(year, month, day, h, m, s);
+              }
+            }
+          }
+        }
+
+        if (!d || isNaN(d.getTime())) return String(dateInput);
+
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = months[d.getMonth()];
+        const year = d.getFullYear();
+
+        if (includeTime) {
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          const seconds = String(d.getSeconds()).padStart(2, '0');
+          return `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        return `${day} ${month} ${year}`;
+      },
+
+      formatSystemDateIndoStr(dateInput) {
+        return this.formatDateIndoStr(dateInput, true);
+      },
+
+      toYmd(dateInput) {
+        if (!dateInput || dateInput === '-' || dateInput === 'null' || dateInput === 'undefined') return '';
+        if (dateInput instanceof Date) {
+          if (isNaN(dateInput.getTime())) return '';
+          const y = dateInput.getFullYear();
+          const m = String(dateInput.getMonth() + 1).padStart(2, '0');
+          const d = String(dateInput.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+        let str = String(dateInput).trim();
+        if (!str || str === '-' || str === 'null') return '';
+
+        // 1. Format yyyy-mm-dd atau yyyy/mm/dd
+        const isoMatch = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+        if (isoMatch) {
+          const y = isoMatch[1];
+          const m = String(isoMatch[2]).padStart(2, '0');
+          const d = String(isoMatch[3]).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+
+        // 2. Format dd-mm-yyyy atau dd/mm/yyyy
+        const dmyMatch = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+        if (dmyMatch) {
+          const d = String(dmyMatch[1]).padStart(2, '0');
+          const m = String(dmyMatch[2]).padStart(2, '0');
+          const y = dmyMatch[3];
+          return `${y}-${m}-${d}`;
+        }
+
+        // 3. Format teks bulan Bahasa Indonesia / Inggris (lengkap & singkatan)
+        const months = {
+          'jan': '01', 'januari': '01', 'january': '01',
+          'feb': '02', 'februari': '02', 'february': '02',
+          'mar': '03', 'maret': '03', 'march': '03',
+          'apr': '04', 'april': '04',
+          'mei': '05', 'may': '05',
+          'jun': '06', 'juni': '06', 'june': '06',
+          'jul': '07', 'juli': '07', 'july': '07',
+          'agu': '08', 'agustus': '08', 'agt': '08', 'aug': '08', 'august': '08',
+          'sep': '09', 'september': '09',
+          'okt': '10', 'oktober': '10', 'oct': '10', 'october': '10',
+          'nov': '11', 'november': '11',
+          'des': '12', 'desember': '12', 'dec': '12', 'december': '12'
+        };
+
+        const parts = str.split(/[\s,]+/);
+        if (parts.length >= 3) {
+          let day = parseInt(parts[0], 10);
+          let monthName = parts[1].toLowerCase();
+          let year = parseInt(parts[2], 10);
+
+          if (isNaN(day) && !isNaN(parseInt(parts[1], 10))) {
+            monthName = parts[0].toLowerCase();
+            day = parseInt(parts[1], 10);
+          }
+
+          if (months[monthName] && !isNaN(day) && !isNaN(year)) {
+            return `${year}-${months[monthName]}-${String(day).padStart(2, '0')}`;
+          }
+        }
+
+        // 4. Fallback Native Date parse
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const dayVal = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${dayVal}`;
+        }
+
+        return '';
+      },
+
+      getActualFlight(typePaket) {
+        if (!typePaket) return '-';
+        const p = (this.paketList || []).find(x => x.typePaket === typePaket || x.namaPaket === typePaket);
+        if (p && p.actualFlight) return this.formatDateIndoStr(p.actualFlight);
+        return '-';
+      },
+
+      getEmbarkasi(typePaket) {
+        if (!typePaket) return '-';
+        const p = (this.paketList || []).find(x => x.typePaket === typePaket || x.namaPaket === typePaket);
+        if (p && p.embarkasi) return p.embarkasi;
+        return '-';
+      },
+
+      getAutoTitel(jenisKelamin, statusPernikahan) {
+        const jk = String(jenisKelamin || '').trim().toLowerCase();
+        const sp = String(statusPernikahan || '').trim().toUpperCase();
+        if (!jk && !sp) return '';
+
+        if (jk.includes('laki') || jk === 'pria' || jk === 'l') {
+          return 'TUAN';
+        } else if (jk.includes('perempuan') || jk === 'wanita' || jk === 'p') {
+          if (sp === 'MENIKAH') return 'NYONYA';
+          if (sp === 'BELUM MENIKAH') return 'NONA';
+          if (sp.includes('JANDA') || sp.includes('DUDA')) return 'NYONYA';
+          return '';
+        }
+        return '';
+      },
+
+      syncSubTabWithModule(modId) {
+        const id = String(modId || '').toLowerCase().trim();
+        if (id === 'mod_form_input_jamaah' || id === 'mod_form_jamaah') {
+          this.activeSubTab = 'form';
+        } else if (id === 'mod_data_jamaah') {
+          this.activeSubTab = 'table';
+        } else if (id === 'mod_rooming_list' || id === 'mod_rooming') {
+          this.activeSubTab = 'rooming';
+        } else if (id === 'mod_pembayaran_jamaah' || id === 'mod_pembayaran') {
+          this.activeSubTab = 'payment';
+          if (!this.selectedJamaahForPayment && this.jamaahList && this.jamaahList.length > 0) {
+            this.selectJamaahForPayment(this.jamaahList[0]);
+          }
+        }
+      },
+      searchKeyword: '',
+      filterKantor: 'Semua',
+      filterPaket: 'Semua',
+      filterPaketSearch: '',
+      isFilterPaketOpen: false,
+      filterKamar: 'Semua',
+      filterStatus: 'Semua',
+      sortBy: 'newest',
+      selectedCityRooming: 'Makkah',
+      
+      jamaahList: [],
+      paketList: [],
+      kantorOptions: [
+        'Solo Raya',
+        'Kantor Pusat Jakarta',
+        'Jabodetabek',
+        'Samarinda',
+        'Pati',
+        'Surabaya',
+        'Rembang',
+        'Sukoharjo',
+        'Banyumas',
+        'Pemalang',
+        'Sumedang',
+        'Semarang'
+      ],
+      
+      formData: {
+        id: '',
+        timestamp: '',
+        tglDaftar: new Date().toISOString().split('T')[0],
+        referensi: '',
+        kantorCabang: '',
+        jenisPaket: '',
+        rencanaKeberangkatan: '',
+        tglKeberangkatan: '',
+        actualKeberangkatan: '',
+        embarkasi: '',
+        caraPembayaran: 'Tunai / Cash',
+        ukuranBaju: 'L',
+        status: 'Terdaftar',
+        namaLengkap: '',
+        namaAyah: '',
+        jenisKelamin: '',
+        statusPernikahan: '',
+        titel: '',
+        noKtp: '',
+        tempatLahir: '',
+        tanggalLahir: '',
+        pendidikan: 'SMA/MA',
+        pekerjaan: '',
+        pekerjaanSelect: '',
+        alamatKtp: '',
+        kelurahan: '',
+        kecamatan: '',
+        kabupaten: '',
+        provinsi: '',
+        kodePos: '',
+        noHp: '',
+        noTelpRumah: '',
+        noHpKeluarga: '',
+        email: '',
+        noPassport: '',
+        tempatPaspor: '',
+        tglDikeluarkanPaspor: '',
+        tglExpiredPaspor: '',
+        uploadKtp: '',
+        uploadPasport: '',
+        bukuNikah: '',
+        suratNikah: '',
+        fotoJamaah: '',
+        kartuKeluarga: '',
+        uploadBuktiTransfer: '',
+        tipeKamar: 'Quad',
+        hotelMakkah: '',
+        noKamarMakkah: '',
+        hotelMadinah: '',
+        noKamarMadinah: ''
+      },
+
+      savingRoomId: null,
+      showRoomModal: false,
+      selectedJamaahForRoom: {},
+      roomModalData: {
+        tipeKamar: 'Quad',
+        hotelMakkah: '',
+        noKamarMakkah: '',
+        hotelMadinah: '',
+        noKamarMadinah: ''
+      },
+
+      showPrintModal: false,
+      printData: {},
+
+      // Payment module state
+      selectedJamaahIdForPayment: '',
+      selectedJamaahForPayment: null,
+      currentJamaahPaymentHistory: [],
+      isSubmittingPayment: false,
+      showKwitansiModal: false,
+      printKwitansiData: {},
+      paymentFileSelected: null,
+      toggleManualUrlInput: false,
+      searchJamaahQuery: '',
+
+      filteredJamaahListForPayment() {
+        const list = (typeof this.getSortedJamaahList === 'function' && Array.isArray(this.getSortedJamaahList()) && this.getSortedJamaahList().length > 0)
+          ? this.getSortedJamaahList()
+          : (Array.isArray(this.sortedJamaahList) && this.sortedJamaahList.length > 0
+              ? this.sortedJamaahList
+              : (Array.isArray(this.jamaahList) ? this.jamaahList : []));
+
+        const q = String(this.searchJamaahQuery || this.searchKeyword || '').toLowerCase().trim();
+        if (!q) {
+          return list;
+        }
+
+        return list.filter(j => {
+          const id = String(j.id || j['ID Jamaah'] || '').toLowerCase();
+          const nama = String(j.namaLengkap || j['Nama Lengkap'] || j.nama || '').toLowerCase();
+          const ktp = String(j.noKtp || j['Nomor KTP'] || j.nik || '').toLowerCase();
+          const paspor = String(j.noPassport || j['Nomor Paspor'] || j.paspor || '').toLowerCase();
+          const paket = String(j.jenisPaket || j['Jenis Paket Umrah'] || '').toLowerCase();
+          const ayah = String(j.namaAyah || j['Nama Ayah'] || '').toLowerCase();
+          return id.includes(q) || nama.includes(q) || ktp.includes(q) || paspor.includes(q) || paket.includes(q) || ayah.includes(q);
+        });
+      },
+
+      onSearchInputChange() {
+        const filtered = this.filteredJamaahListForPayment();
+        const rawQuery = String(this.searchJamaahQuery || this.searchKeyword || '').trim();
+
+        if (!rawQuery) {
+          return;
+        }
+
+        if (filtered && filtered.length === 1) {
+          const matched = filtered[0];
+          const matchedId = String(matched.id || matched['ID Jamaah'] || '').trim();
+          this.selectedJamaahIdForPayment = matchedId;
+          this.selectJamaahForPayment(matched);
+        } else if (filtered && (filtered.length > 1 || filtered.length === 0)) {
+          this.selectedJamaahIdForPayment = '';
+          this.selectedJamaahForPayment = null;
+        }
+      },
+
+      filteredCurrentJamaahPaymentHistory() {
+        const history = Array.isArray(this.currentJamaahPaymentHistory) ? this.currentJamaahPaymentHistory : [];
+        const q = String(this.searchJamaahQuery || this.searchKeyword || '').toLowerCase().trim();
+        if (!q) return history;
+        return history.filter(item => {
+          const idKw = String(item.idKwitansi || item.id || '').toLowerCase();
+          const tgl = String(item.tglBayar || item.timestamp || '').toLowerCase();
+          const tipe = String(item.tipePembayaran || item.tipe || '').toLowerCase();
+          const me = String(item.metodePembayaran || item.metode || '').toLowerCase();
+          const bank = String(item.namaBank || '').toLowerCase();
+          const cat = String(item.catatan || item.keterangan || '').toLowerCase();
+          const nominal = String(item.jumlahPembayaran || item.nominal || '').toLowerCase();
+          return idKw.includes(q) || tgl.includes(q) || tipe.includes(q) || me.includes(q) || bank.includes(q) || cat.includes(q) || nominal.includes(q);
+        });
+      },
+      paymentForm: {
+        idJamaah: '',
+        namaJamaah: '',
+        noKtp: '',
+        jenisPaket: '',
+        jumlahPembayaran: 10000000,
+        tipePembayaran: 'DP / Uang Muka',
+        metodePembayaran: 'Transfer Bank',
+        namaBank: 'BSI (Bank Syariah Indonesia)',
+        noReferensi: '',
+        keterangan: '',
+        uploadBuktiTransfer: '',
+        tglBayar: new Date().toISOString().split('T')[0]
+      },
+
+      formFileSelected: {
+        ktp: null,
+        pasport: null,
+        bukuNikah: null,
+        suratNikah: null,
+        foto: null,
+        kk: null,
+        buktiTransfer: null
+      },
+
+      handleFormDocFileSelect(event, docKey) {
+        const file = event.target.files ? event.target.files[0] : null;
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) {
+          alert('Ukuran berkas ' + docKey.toUpperCase() + ' maksimal 10 MB!');
+          event.target.value = '';
+          return;
+        }
+        if (!this.formFileSelected) {
+          this.formFileSelected = { ktp: null, pasport: null, bukuNikah: null, suratNikah: null, foto: null, kk: null, buktiTransfer: null };
+        }
+        this.formFileSelected[docKey] = file;
+      },
+
+      readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+          if (!file) return resolve('');
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(file);
+        });
+      },
+
+      handlePaymentFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+          if (file.size > 10 * 1024 * 1024) {
+            alert('Ukuran berkas Bukti Transfer maksimal 10 MB!');
+            event.target.value = '';
+            this.paymentFileSelected = null;
+            return;
+          }
+          this.paymentFileSelected = file;
+        }
+      },
+
+      formatIndoDate(dateStr) {
+        return this.formatDateIndoStr(dateStr);
+      },
+
+      getFotoUrl(url) {
+        if (!url || typeof url !== 'string') return '';
+        const clean = url.trim();
+        if (!clean || clean.includes('sample_foto')) return '';
+        if (clean.includes('drive.google.com')) {
+          const fileIdMatch = clean.match(/\/d\/([a-zA-Z0-9_-]+)/) || clean.match(/id=([a-zA-Z0-9_-]+)/);
+          if (fileIdMatch && fileIdMatch[1]) {
+            return 'https://lh3.googleusercontent.com/d/' + fileIdMatch[1];
+          }
+        }
+        return clean;
+      },
+
+      get activeUserKantor() {
+        let userObj = null;
+        if (typeof this.currentUser === 'object' && this.currentUser) {
+          userObj = this.currentUser;
+        } else if (window.appCoreInstance && window.appCoreInstance.currentUser) {
+          userObj = window.appCoreInstance.currentUser;
+        } else {
+          try {
+            const sess = sessionStorage.getItem('app_session');
+            if (sess) userObj = JSON.parse(sess);
+          } catch(e) {}
+        }
+        
+        if (!userObj) return '';
+        const role = String(userObj.role || userObj.Role || '').toLowerCase();
+        if (role === 'admin') return '';
+        
+        const kantor = String(userObj.kantor || userObj.Kantor || userObj.kantorCabang || '').trim();
+        if (['pusat', 'kantor pusat', 'all', 'semua', '-'].includes(kantor.toLowerCase())) return '';
+        return kantor;
+      },
+
+      get availablePaketOptions() {
+        const options = [];
+        const seen = new Set();
+
+        const addOption = (raw) => {
+          if (!raw) return;
+          const val = String(raw).trim();
+          if (!val || val === '-' || val.toLowerCase() === 'null' || val.toLowerCase() === 'undefined') return;
+          const key = val.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            options.push(val);
+          }
+        };
+
+        // 1. Ambil opsi unik dari data jamaah yang terdaftar (jamaahList)
+        (this.jamaahList || []).forEach(j => {
+          addOption(j.jenisPaket || j['Jenis Paket Umrah'] || j['Jenis Paket'] || j.typePaket || j.namaPaket);
+        });
+
+        // 2. Lengkapi juga dari master paketList agar semua paket resmi dapat dipilih/difilter
+        (this.paketList || []).forEach(p => {
+          addOption(p.typePaket || p.namaPaket || p.jenisPaket || p['Jenis Paket Umrah'] || (typeof p === 'string' ? p : ''));
+        });
+
+        return options;
+      },
+
+      get searchedFilterPaketOptions() {
+        const all = this.availablePaketOptions || [];
+        if (!this.filterPaketSearch || !this.filterPaketSearch.trim()) {
+          return all;
+        }
+        const q = this.filterPaketSearch.toLowerCase().trim();
+        return all.filter(p => String(p).toLowerCase().includes(q));
+      },
+
+      setFilterPaket(val) {
+        this.filterPaket = val || 'Semua';
+        this.filterPaketSearch = '';
+        this.isFilterPaketOpen = false;
+      },
+
+      selectFirstSearchedPaket() {
+        const opts = this.searchedFilterPaketOptions || [];
+        if (opts.length > 0) {
+          this.setFilterPaket(opts[0]);
+        }
+      },
+
+      isPaketMatch(j, targetPaket) {
+        if (!targetPaket || targetPaket === 'Semua' || targetPaket === 'all') return true;
+        if (!j) return false;
+
+        const jPaket = String(j.jenisPaket || j['Jenis Paket Umrah'] || j['Jenis Paket'] || j.typePaket || j.namaPaket || '').trim();
+        if (!jPaket || jPaket === '-' || jPaket.toLowerCase() === 'null' || jPaket.toLowerCase() === 'undefined') return false;
+
+        const cleanJ = jPaket.replace(/\s+/g, ' ').toLowerCase();
+        const cleanTarget = String(targetPaket).trim().replace(/\s+/g, ' ').toLowerCase();
+
+        // Strict Equality Match: Hanya cocok jika nama paket sama persis (tidak parsial / mengandung kata)
+        return cleanJ === cleanTarget;
+      },
+
+      getExportJamaahList(sourceList) {
+        const all = sourceList || this.jamaahList || [];
+        const targetPaket = (this.filterPaket && this.filterPaket !== 'Semua') ? this.filterPaket : '';
+        const userBranch = (this.activeUserKantor || '').toLowerCase();
+
+        return all.filter(j => {
+          // 1. Cabang restriction untuk user non-admin
+          if (userBranch !== '') {
+            const jKantor = String(j.kantorCabang || j.kantor || '').toLowerCase();
+            if (jKantor !== '' && !jKantor.includes(userBranch) && !userBranch.includes(jKantor)) {
+              return false;
+            }
+          }
+
+          // 2. Dropdown Filter Kantor (jika dipilih)
+          if (this.filterKantor && this.filterKantor !== 'Semua') {
+            const fK = this.filterKantor.toLowerCase();
+            const jK = String(j.kantorCabang || j.kantor || '').toLowerCase();
+            if (!jK.includes(fK) && !fK.includes(jK)) {
+              return false;
+            }
+          }
+
+          // 3. Filter Paket spesifik (Strict Equality Match sesuai Dropdown Paket yang dipilih)
+          if (targetPaket) {
+            if (!this.isPaketMatch(j, targetPaket)) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+      },
+
+      get filteredFormPaketOptions() {
+        const today = new Date();
+        const oneMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+        oneMonthAgo.setHours(0, 0, 0, 0);
+
+        let list = (this.paketList || []).filter(p => {
+          const rawDate = p.scheduleKeberangkatan || p.tglKeberangkatan || p.actualFlight || p.actualKeberangkatan || '';
+          if (!rawDate || rawDate === '-' || rawDate === 'null') return true;
+
+          const isoStr = this.parseDateToIso(rawDate);
+          if (!isoStr) return true;
+
+          const pDate = new Date(isoStr);
+          if (isNaN(pDate.getTime())) return true;
+
+          return pDate >= oneMonthAgo;
+        });
+
+        list.sort((a, b) => {
+          const rawA = a.scheduleKeberangkatan || a.tglKeberangkatan || a.actualFlight || a.actualKeberangkatan || '';
+          const rawB = b.scheduleKeberangkatan || b.tglKeberangkatan || b.actualFlight || b.actualKeberangkatan || '';
+
+          const isoA = this.parseDateToIso(rawA);
+          const isoB = this.parseDateToIso(rawB);
+
+          const timeA = isoA ? new Date(isoA).getTime() : 0;
+          const timeB = isoB ? new Date(isoB).getTime() : 0;
+
+          return timeB - timeA;
+        });
+
+        return list;
+      },
+
+      fetchKantorList() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              if (res && res.success && Array.isArray(res.data)) {
+                this.kantorOptions = res.data;
+              } else if (res && Array.isArray(res.kantorOptions)) {
+                this.kantorOptions = res.kantorOptions;
+              } else if (Array.isArray(res)) {
+                this.kantorOptions = res;
+              } else {
+                this.kantorOptions = this.getDefaultKantorOptions();
+              }
+            })
+            .withFailureHandler(err => {
+              console.warn('Gagal fetch kantor options:', err);
+              this.kantorOptions = this.getDefaultKantorOptions();
+            })
+            .getKantorOptions();
+        } else {
+          this.kantorOptions = this.getDefaultKantorOptions();
+        }
+      },
+
+      getDefaultKantorOptions() {
+        return [
+          'Solo Raya',
+          'Kantor Pusat Jakarta',
+          'Jabodetabek',
+          'Samarinda',
+          'Pati',
+          'Surabaya',
+          'Rembang',
+          'Sukoharjo',
+          'Banyumas',
+          'Pemalang',
+          'Sumedang',
+          'Semarang'
+        ];
+      },
+
+      fetchPaketList() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              if (res && res.success && Array.isArray(res.data)) {
+                this.paketList = res.data;
+              } else if (Array.isArray(res)) {
+                this.paketList = res;
+              } else {
+                this.paketList = this.getDefaultPaketList();
+              }
+            })
+            .withFailureHandler(err => {
+              console.warn('Gagal fetch paket list dari server:', err);
+              this.paketList = this.getDefaultPaketList();
+            })
+            .getPaketOptions();
+        } else {
+          this.paketList = this.getDefaultPaketList();
+        }
+      },
+
+      getDefaultPaketList() {
+        return [
+          { typePaket: 'Paket Reguler 9 Hari', keterangan: 'Open', actualFlight: '2026-10-15', embarkasi: 'Jakarta (CGK)' },
+          { typePaket: 'Paket Executive 12 Hari', keterangan: 'Open', actualFlight: '2026-11-20', embarkasi: 'Surabaya (SUB)' },
+          { typePaket: 'Paket VIP / Bintang 5', keterangan: 'Open', actualFlight: '2026-12-05', embarkasi: 'Jakarta (CGK)' },
+          { typePaket: 'Paket Bronze', keterangan: 'Open', actualFlight: '2026-10-28', embarkasi: 'Solo (SOC)' },
+          { typePaket: 'Paket Silver', keterangan: 'Open', actualFlight: '2026-11-10', embarkasi: 'Jakarta (CGK)' },
+          { typePaket: 'Paket Gold', keterangan: 'Open', actualFlight: '2026-12-15', embarkasi: 'Surabaya (SUB)' },
+          { typePaket: 'Paket Custom / Tailor Made', keterangan: 'Open', actualFlight: '2026-12-25', embarkasi: 'Jakarta (CGK)' }
+        ];
+      },
+
+      parseDateToIso(dateStr) {
+        if (!dateStr || dateStr === '-' || dateStr === 'null') return '';
+        let str = String(dateStr).trim();
+        if (!str) return '';
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+        const ymdMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+        if (ymdMatch) {
+          return `${ymdMatch[1]}-${String(ymdMatch[2]).padStart(2, '0')}-${String(ymdMatch[3]).padStart(2, '0')}`;
+        }
+
+        const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+        if (dmyMatch) {
+          return `${dmyMatch[3]}-${String(dmyMatch[2]).padStart(2, '0')}-${String(dmyMatch[1]).padStart(2, '0')}`;
+        }
+
+        const indMonths = {
+          'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
+          'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
+          'september': '09', 'oktober': '10', 'november': '11', 'desember': '12',
+          'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'jun': '06',
+          'jul': '07', 'agu': '08', 'sep': '09', 'okt': '10', 'nov': '11', 'des': '12'
+        };
+
+        const parts = str.toLowerCase().split(/\s+/);
+        if (parts.length >= 3) {
+          const day = parts[0].replace(/[^0-9]/g, '');
+          const monthStr = parts[1].replace(/[^a-z]/g, '');
+          const year = parts[2].replace(/[^0-9]/g, '');
+
+          if (day && monthStr && year && indMonths[monthStr]) {
+            const d = String(day).padStart(2, '0');
+            const m = indMonths[monthStr];
+            const y = year.length === 2 ? '20' + year : year;
+            return `${y}-${m}-${d}`;
+          }
+        }
+
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) {
+          const y = parsed.getFullYear();
+          const m = String(parsed.getMonth() + 1).padStart(2, '0');
+          const d = String(parsed.getDate()).padStart(2, '0');
+          if (y > 1990 && y < 2100) {
+            return `${y}-${m}-${d}`;
+          }
+        }
+
+        return '';
+      },
+
+      onPaketChange() {
+        if (!this.formData.jenisPaket) {
+          this.formData.rencanaKeberangkatan = '';
+          this.formData.tglKeberangkatan = '';
+          this.formData.actualKeberangkatan = '';
+          this.formData.embarkasi = '';
+          return;
+        }
+        const found = (this.paketList || []).find(p => (p.typePaket || p.namaPaket || p) === this.formData.jenisPaket);
+        if (found) {
+          const rawSchedule = found.scheduleKeberangkatan || found.tglKeberangkatan || found.actualFlight || '';
+          const rawActual = found.actualFlight || found.scheduleKeberangkatan || found.tglKeberangkatan || '';
+          const rawEmbarkasi = found.embarkasi || '-';
+
+          const isoDate = this.parseDateToIso(rawSchedule || rawActual);
+          this.formData.tglKeberangkatan = isoDate || '';
+          this.formData.rencanaKeberangkatan = this.formatDateIndoStr(rawSchedule || rawActual);
+          this.formData.actualKeberangkatan = this.formatDateIndoStr(rawActual);
+          this.formData.embarkasi = rawEmbarkasi;
+        }
+      },
+
+      fetchJamaahData(showToast = false) {
+        this.isLoading = true;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              this.jamaahList = res || [];
+              this.isLoading = false;
+              if (!this.selectedJamaahForPayment && this.jamaahList.length > 0) {
+                this.selectJamaahForPayment(this.jamaahList[0]);
+              }
+              if (showToast && window.appCoreInstance) {
+                window.appCoreInstance.showToast('Data Jamaah berhasil diperbarui', 'success');
+              }
+            })
+            .withFailureHandler(err => {
+              this.isLoading = false;
+              console.error('Gagal fetch jamaah:', err);
+            })
+            .getJamaahList();
+        } else {
+          this.jamaahList = this.getSampleDemoList();
+          this.isLoading = false;
+          if (!this.selectedJamaahForPayment && this.jamaahList.length > 0) {
+            this.selectJamaahForPayment(this.jamaahList[0]);
+          }
+        }
+      },
+
+      getSampleDemoList() {
+        return [
+          {
+            id: 'JM-2026-0001',
+            tglDaftar: '2026-09-01',
+            referensi: 'Ustadz Mansur',
+            kantorCabang: 'Cabang Jakarta',
+            namaLengkap: 'H. Ahmad Subandi',
+            namaAyah: 'H. Abdullah',
+            jenisKelamin: 'Laki-laki',
+            noKtp: '3171012345670001',
+            noHp: '081299887766',
+            noPassport: 'A1234567',
+            jenisPaket: 'Paket VIP / Bintang 5',
+            rencanaKeberangkatan: '15 Oktober 2026',
+            actualKeberangkatan: '15 Oktober 2026',
+            embarkasi: 'Jakarta (CGK)',
+            tglKeberangkatan: '2026-10-15',
+            caraPembayaran: 'Transfer Bank',
+            ukuranBaju: 'XL',
+            tipeKamar: 'Quad',
+            hotelMakkah: 'Swissotel Makkah',
+            noKamarMakkah: '402',
+            hotelMadinah: 'Pullman Zamzam',
+            noKamarMadinah: '305',
+            status: 'Lunas'
+          },
+          {
+            id: 'JM-2026-0002',
+            tglDaftar: '2026-09-02',
+            referensi: 'Kemitraan',
+            kantorCabang: 'Cabang Surabaya',
+            namaLengkap: 'Hj. Siti Fatimah',
+            namaAyah: 'H. Rahmat',
+            jenisKelamin: 'Perempuan',
+            noKtp: '3578012345670002',
+            noHp: '081311223344',
+            noPassport: 'B9876543',
+            jenisPaket: 'Paket Reguler 9 Hari',
+            rencanaKeberangkatan: '15 Oktober 2026',
+            actualKeberangkatan: '15 Oktober 2026',
+            embarkasi: 'Surabaya (SUB)',
+            tglKeberangkatan: '2026-10-15',
+            caraPembayaran: 'Tunai / Cash',
+            ukuranBaju: 'M',
+            tipeKamar: 'Triple',
+            hotelMakkah: 'Hilton Makkah',
+            noKamarMakkah: '501',
+            hotelMadinah: 'Frontel Madinah',
+            noKamarMadinah: '208',
+            status: 'Terdaftar'
+          }
+        ];
+      },
+
+      resetForm() {
+        this.formData = {
+          id: '',
+          tglDaftar: new Date().toISOString().split('T')[0],
+          referensi: '',
+          kantorCabang: '',
+          jenisPaket: '',
+          rencanaKeberangkatan: '',
+          tglKeberangkatan: '',
+          actualKeberangkatan: '',
+          embarkasi: '',
+          caraPembayaran: 'Tunai / Cash',
+          ukuranBaju: 'L',
+          status: 'Terdaftar',
+          namaLengkap: '',
+          namaAyah: '',
+          jenisKelamin: '',
+          statusPernikahan: '',
+          titel: '',
+          noKtp: '',
+          tempatLahir: '',
+          tanggalLahir: '',
+          pendidikan: 'SMA/MA',
+          pekerjaan: '',
+          pekerjaanSelect: '',
+          alamatKtp: '',
+          kelurahan: '',
+          kecamatan: '',
+          kabupaten: '',
+          provinsi: '',
+          kodePos: '',
+          noHp: '',
+          noTelpRumah: '',
+          noHpKeluarga: '',
+          email: '',
+          noPassport: '',
+          tempatPaspor: '',
+          tglDikeluarkanPaspor: '',
+          tglExpiredPaspor: '',
+          uploadKtp: '',
+          uploadPasport: '',
+          bukuNikah: '',
+          suratNikah: '',
+          fotoJamaah: '',
+          kartuKeluarga: '',
+          uploadBuktiTransfer: '',
+          tipeKamar: 'Quad',
+          hargaPaket: 0,
+          potongan: 0,
+          voucher: 0,
+          hotelMakkah: '',
+          noKamarMakkah: '',
+          hotelMadinah: '',
+          noKamarMadinah: ''
+        };
+        this.formFileSelected = { ktp: null, pasport: null, bukuNikah: null, suratNikah: null, foto: null, kk: null, buktiTransfer: null };
+        if (this.currentModule === 'mod_data_jamaah') {
+          this.activeSubTab = 'table';
+        }
+      },
+
+      async saveJamaahRecord() {
+        this.isSubmitting = true;
+        const user = window.appCoreInstance ? window.appCoreInstance.currentUser.username : 'Admin';
+
+        // Read local files in Section 8 to Base64 if selected
+        const docFilesPayload = {};
+        if (this.formFileSelected) {
+          for (const key of Object.keys(this.formFileSelected)) {
+            const fileObj = this.formFileSelected[key];
+            if (fileObj) {
+              try {
+                const base64Str = await this.readFileAsBase64(fileObj);
+                docFilesPayload[key] = {
+                  name: fileObj.name,
+                  type: fileObj.type,
+                  base64: base64Str
+                };
+              } catch (eErr) {
+                console.warn('Gagal membaca berkas ' + key + ':', eErr);
+              }
+            }
+          }
+        }
+
+        if (!this.formData.titel) {
+          this.formData.titel = this.getAutoTitel(this.formData.jenisKelamin, this.formData.statusPernikahan);
+        }
+
+        const payload = Object.assign({}, this.formData, {
+          formDocFiles: docFilesPayload,
+          titel: this.formData.titel || this.getAutoTitel(this.formData.jenisKelamin, this.formData.statusPernikahan)
+        });
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              this.isSubmitting = false;
+              if (res.success) {
+                if (window.appCoreInstance) window.appCoreInstance.showToast(res.message, 'success');
+                this.resetForm();
+                this.fetchJamaahData();
+                if (this.currentModule !== 'mod_form_input_jamaah') {
+                  this.activeSubTab = 'table';
+                } else {
+                  this.activeSubTab = 'form';
+                }
+              } else {
+                alert('Gagal: ' + res.message);
+              }
+            })
+            .withFailureHandler(err => {
+              this.isSubmitting = false;
+              alert('Error: ' + err.message);
+            })
+            .saveJamaah(payload, user);
+        } else {
+          setTimeout(() => {
+            this.isSubmitting = false;
+            alert('Simpan Berhasil (Offline Demo Mode)');
+            this.resetForm();
+            this.fetchJamaahData();
+            if (this.currentModule !== 'mod_form_input_jamaah') {
+              this.activeSubTab = 'table';
+            } else {
+              this.activeSubTab = 'form';
+            }
+          }, 600);
+        }
+      },
+
+      editJamaah(j) {
+        this.formData = Object.assign({}, j);
+
+        this.formData.tglDaftar = this.toYmd(j.tglDaftar);
+        this.formData.tanggalLahir = this.toYmd(j.tanggalLahir);
+        this.formData.tglKeberangkatan = this.toYmd(j.tglKeberangkatan);
+        this.formData.tglDikeluarkanPaspor = this.toYmd(j.tglDikeluarkanPaspor);
+        this.formData.tglExpiredPaspor = this.toYmd(j.tglExpiredPaspor);
+
+        if (j.rencanaKeberangkatan) {
+          this.formData.rencanaKeberangkatan = j.rencanaKeberangkatan;
+        } else if (j.tglKeberangkatan) {
+          this.formData.rencanaKeberangkatan = this.formatIndoDate(j.tglKeberangkatan);
+        }
+        if (j.actualKeberangkatan) {
+          this.formData.actualKeberangkatan = j.actualKeberangkatan;
+        }
+        if (j.embarkasi) {
+          this.formData.embarkasi = j.embarkasi;
+        }
+
+        if (this.formData.jenisPaket && (!this.formData.actualKeberangkatan || !this.formData.embarkasi || !this.formData.rencanaKeberangkatan)) {
+          this.onPaketChange();
+        }
+
+        const refOptions = ['Teman', 'Kerabat/Saudara', 'Website', 'Media', 'Instansi/Pemerintah/Swasta', 'Pengajian', 'Agent / Ustadz'];
+        this.formData.referensiSelect = refOptions.includes(j.referensi) ? j.referensi : (j.referensi ? 'Lainnya' : '');
+
+        this.formData.kantorCabangSelect = (this.kantorOptions || []).includes(j.kantorCabang) ? j.kantorCabang : (j.kantorCabang ? 'Lainnya' : '');
+
+        this.formData.statusPernikahan = j.statusPernikahan || j['Status Pernikahan'] || j.statusNikah || '';
+        this.formData.titel = j.titel || j['Titel'] || j.title || this.getAutoTitel(this.formData.jenisKelamin, this.formData.statusPernikahan);
+
+        const pekOptions = ['PNS', 'PEG. SWASTA', 'WIRAUSAHA', 'TNI / POLRI', 'PETANI', 'NELAYAN', 'LAINNYA', 'TIDAK BEKERJA'];
+        let normalizedPek = String(j.pekerjaan || '').trim();
+        if (normalizedPek.toLowerCase() === 'peg. swasta' || normalizedPek.toLowerCase() === 'swasta') normalizedPek = 'PEG. SWASTA';
+        if (normalizedPek.toLowerCase() === 'wiraswasta') normalizedPek = 'WIRAUSAHA';
+        if (normalizedPek.toLowerCase() === 'tni' || normalizedPek.toLowerCase() === 'polri' || normalizedPek.toLowerCase() === 'tni/polri') normalizedPek = 'TNI / POLRI';
+        if (normalizedPek.toLowerCase() === 'lain-lain') normalizedPek = 'LAINNYA';
+
+        this.formData.pekerjaan = normalizedPek;
+        this.formData.pekerjaanSelect = pekOptions.includes(normalizedPek) ? normalizedPek : (normalizedPek ? 'LAINNYA' : '');
+
+        // Populate document links fallback
+        this.formData.uploadKtp = j.uploadKtp || j['Upload KTP'] || j.ktp || '';
+        this.formData.uploadPasport = j.uploadPasport || j['Upload Pasport'] || j['Upload Paspor'] || j.pasport || '';
+        this.formData.suratNikah = j.suratNikah || j['Surat Nikah'] || j.bukuNikah || j['Buku Nikah'] || '';
+        this.formData.fotoJamaah = j.fotoJamaah || j['Foto Jamaah'] || j.foto || '';
+        this.formData.kartuKeluarga = j.kartuKeluarga || j['Kartu Keluarga'] || j.kk || '';
+        this.formData.uploadBuktiTransfer = j.uploadBuktiTransfer || j['Upload Bukti Transfer'] || j.buktiTransfer || '';
+
+        this.activeSubTab = 'form';
+      },
+
+      openKelengkapanForJamaah(j) {
+        if (!j || !j.id) return;
+        const targetMod = 'mod_kelengkapan_umrah';
+        const targetTitle = 'Input Kelengkapan Data Umrah';
+
+        // 1. Pindah ke modul Kelengkapan Data Umrah
+        if (typeof navigateToModule === 'function') {
+          navigateToModule(targetMod, targetTitle);
+        } else if (window.appCoreInstance && typeof window.appCoreInstance.navigateToModule === 'function') {
+          window.appCoreInstance.navigateToModule(targetMod, targetTitle);
+        } else if (window.appCoreInstance) {
+          window.appCoreInstance.currentModule = targetMod;
+          window.appCoreInstance.currentModuleName = targetTitle;
+        }
+
+        // 2. Buka tab Form Kelengkapan dan pilih langsung Jamaah ini
+        const setupSelection = () => {
+          const app = window.appCoreInstance;
+          if (!app) return;
+          app.kelengkapanViewTab = 'form';
+          if (j.jenisPaket) {
+            app.kelengkapanFilterPaket = j.jenisPaket;
+          }
+          if (typeof app.onKelengkapanJamaahSelect === 'function') {
+            app.onKelengkapanJamaahSelect(j.id);
+          }
+          // Fallback jika belum terpilih (misal master list belum sempat fetch)
+          if (!app.selectedKelengkapanJamaah) {
+            app.selectedKelengkapanJamaah = {
+              id: j.id,
+              namaLengkap: j.namaLengkap,
+              jenisPaket: j.jenisPaket || '',
+              agent: j.namaAgen || j.referensi || '-'
+            };
+            app.selectedKelengkapanJamaahId = j.id;
+            if (typeof app.resetKelengkapanForm === 'function') {
+              app.resetKelengkapanForm();
+            }
+            if (app.kelengkapanForm) {
+              app.kelengkapanForm.idJamaah = j.id;
+              app.kelengkapanForm.namaJamaah = j.namaLengkap;
+              app.kelengkapanForm.namaPaket = j.jenisPaket || '';
+              app.kelengkapanForm.agent = j.namaAgen || j.referensi || '-';
+            }
+          }
+          if (typeof app.showToast === 'function') {
+            app.showToast('Membuka Input Kelengkapan Data Umrah untuk: ' + (j.namaLengkap || j.id), 'info');
+          }
+        };
+
+        setTimeout(setupSelection, 150);
+      },
+
+      deleteJamaahRecord(j) {
+        if (!confirm('Apakah Anda yakin ingin menghapus data jamaah ' + j.namaLengkap + ' (' + j.id + ')?')) return;
+        const user = window.appCoreInstance ? window.appCoreInstance.currentUser.username : 'Admin';
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              if (res.success) {
+                if (window.appCoreInstance) window.appCoreInstance.showToast(res.message, 'success');
+                this.fetchJamaahData();
+              } else {
+                alert('Gagal: ' + res.message);
+              }
+            })
+            .deleteJamaah(j.id, user);
+        } else {
+          this.jamaahList = this.jamaahList.filter(item => item.id !== j.id);
+          alert('Berhasil dihapus (Offline mode)');
+        }
+      },
+
+      openRoomingModal(j) {
+        this.selectedJamaahForRoom = j;
+        this.roomModalData = {
+          tipeKamar: j.tipeKamar || 'Quad',
+          hotelMakkah: j.hotelMakkah || '',
+          noKamarMakkah: j.noKamarMakkah || '',
+          hotelMadinah: j.hotelMadinah || '',
+          noKamarMadinah: j.noKamarMadinah || ''
+        };
+        this.showRoomModal = true;
+      },
+
+      submitRoomAssignment() {
+        if (!this.selectedJamaahForRoom || !this.selectedJamaahForRoom.id) return;
+        this.isSavingRoomModal = true;
+        const user = window.appCoreInstance ? window.appCoreInstance.currentUser.username : 'Admin';
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              this.isSavingRoomModal = false;
+              this.showRoomModal = false;
+              if (res && res.success) {
+                if (window.appCoreInstance) window.appCoreInstance.showToast(res.message || 'Penempatan kamar berhasil disimpan!', 'success');
+                this.fetchJamaahData();
+              } else {
+                alert('Gagal: ' + (res ? res.message : 'Terjadi kesalahan'));
+              }
+            })
+            .withFailureHandler(err => {
+              this.isSavingRoomModal = false;
+              alert('Gagal menyimpan kamar: ' + err.message);
+            })
+            .updateJamaahRoomAssignment(this.selectedJamaahForRoom.id, this.roomModalData, user);
+        } else {
+          setTimeout(() => {
+            this.selectedJamaahForRoom.tipeKamar = this.roomModalData.tipeKamar;
+            this.selectedJamaahForRoom.hotelMakkah = this.roomModalData.hotelMakkah;
+            this.selectedJamaahForRoom.noKamarMakkah = this.roomModalData.noKamarMakkah;
+            this.selectedJamaahForRoom.hotelMadinah = this.roomModalData.hotelMadinah;
+            this.selectedJamaahForRoom.noKamarMadinah = this.roomModalData.noKamarMadinah;
+            this.isSavingRoomModal = false;
+            this.showRoomModal = false;
+            if (window.appCoreInstance) window.appCoreInstance.showToast('Penempatan kamar berhasil diperbarui!', 'success');
+          }, 500);
+        }
+      },
+
+      saveSingleRooming(item) {
+        if (!item || !item.id) return;
+        this.savingRoomId = item.id;
+        const self = this;
+        const user = window.appCoreInstance ? window.appCoreInstance.currentUser.username : 'Admin';
+        const roomData = {
+          tipeKamar: item.tipeKamar || 'Quad',
+          hotelMakkah: item.hotelMakkah || '',
+          noKamarMakkah: item.noKamarMakkah || '',
+          hotelMadinah: item.hotelMadinah || '',
+          noKamarMadinah: item.noKamarMadinah || ''
+        };
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(res => {
+              self.savingRoomId = null;
+              if (res && res.success) {
+                if (window.appCoreInstance) window.appCoreInstance.showToast(res.message || 'Penempatan kamar berhasil disimpan!', 'success');
+              } else {
+                alert('Gagal: ' + (res ? res.message : 'Terjadi kesalahan'));
+              }
+            })
+            .withFailureHandler(err => {
+              self.savingRoomId = null;
+              alert('Gagal menyimpan kamar: ' + err.message);
+            })
+            .updateJamaahRoomAssignment(item.id, roomData, user);
+        } else {
+          setTimeout(() => {
+            self.savingRoomId = null;
+            alert('Penempatan kamar untuk ' + item.namaLengkap + ' berhasil diperbarui (Demo Mode).');
+          }, 500);
+        }
+      },
+
+      printRoomingList() {
+        const isMakkah = this.selectedCityRooming === 'Makkah';
+        const title = 'Rooming List Hotel ' + (isMakkah ? 'Makkah' : 'Madinah');
+        const printWin = window.open('', '_blank', 'width=900,height=700');
+        if (!printWin) {
+          alert('Pop-up terblokir. Izinkan pop-up browser untuk mencetak rooming list.');
+          return;
+        }
+
+        let rowsHtml = '';
+        let no = 1;
+        (this.jamaahList || []).forEach(j => {
+          const roomNo = isMakkah ? j.noKamarMakkah : j.noKamarMadinah;
+          const hotelName = isMakkah ? j.hotelMakkah : j.hotelMadinah;
+          rowsHtml += `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 6px; text-align: center;">${no++}</td>
+              <td style="padding: 6px; font-weight: bold;">${j.namaLengkap || '-'}</td>
+              <td style="padding: 6px; text-align: center;">${j.jenisKelamin === 'Laki-laki' ? 'L' : 'P'}</td>
+              <td style="padding: 6px;">${j.jenisPaket || '-'}</td>
+              <td style="padding: 6px; text-align: center;">${j.tipeKamar || 'Quad'}</td>
+              <td style="padding: 6px;">${hotelName || '-'}</td>
+              <td style="padding: 6px; font-weight: bold; text-align: center;">${roomNo || '-'}</td>
+            </tr>
+          `;
+        });
+
+        const html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>${title}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; color: #1e293b; }
+              h2 { margin-bottom: 5px; color: #0f172a; }
+              p { margin-top: 0; color: #64748b; font-size: 12px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 15px; }
+              th { background: #0f172a; color: #fff; padding: 8px; text-align: left; }
+              @media print { button { display: none; } }
+            </style>
+          </head>
+          <body>
+            <h2>MANIFEST MANAJEMEN ROOMING LIST</h2>
+            <p>Target: <strong>${title}</strong> | Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</p>
+            <button onclick="window.print()" style="padding: 8px 16px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 15px;">Cetak Dokumen</button>
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: center;">No</th>
+                  <th>Nama Jamaah</th>
+                  <th style="text-align: center;">Gender</th>
+                  <th>Paket</th>
+                  <th style="text-align: center;">Tipe Kamar</th>
+                  <th>Hotel</th>
+                  <th style="text-align: center;">No. Kamar</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || '<tr><td colspan="7" style="text-align:center; padding: 15px;">Belum ada data jamaah.</td></tr>'}
+              </tbody>
+            </table>
+          </body>
+          </html>
+        `;
+
+        printWin.document.write(html);
+        printWin.document.close();
+      },
+
+      printSuratPendaftaran(j) {
+        this.printData = Object.assign({}, j);
+        this.showPrintModal = true;
+      },
+
+      triggerBrowserPrint() {
+        const origTitle = document.title;
+        let docName = 'Dokumen';
+        if (this.showKwitansiModal && this.printKwitansiData) {
+          docName = 'Kwitansi_' + (this.printKwitansiData.idKwitansi || '') + '_' + (this.printKwitansiData.namaJamaah || '');
+        } else if (this.printData) {
+          docName = 'SuratPendaftaran_' + (this.printData.id || '') + '_' + (this.printData.namaLengkap || '');
+        }
+        document.title = 'Fath Indah Portal - ' + docName;
+        window.print();
+        setTimeout(() => {
+          document.title = origTitle;
+        }, 1000);
+      },
+
+      async exportToExcel() {
+        if (typeof XLSX === 'undefined') {
+          alert('Library XLSX (SheetJS) belum dimuat.');
+          return;
+        }
+
+        const notify = (msg, type = 'info') => {
+          if (window.appCoreInstance && typeof window.appCoreInstance.showToast === 'function') {
+            window.appCoreInstance.showToast(msg, type);
+          } else if (typeof this.showToast === 'function') {
+            this.showToast(msg, type);
+          }
+        };
+
+        notify('Menyegarkan data terbaru dari Google Sheets (Data Jamaah & Kelengkapan Umrah)...', 'info');
+        this.isLoading = true;
+
+        // Jika berada di lingkungan Google Apps Script, lakukan refresh paralel dari server
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          const token = (window.appCoreInstance && window.appCoreInstance.currentUser) ? window.appCoreInstance.currentUser.token : '';
+
+          // 1. Refresh Data Jamaah dari Google Sheet
+          const refreshJamaahPromise = new Promise((resolve) => {
+            google.script.run
+              .withSuccessHandler(res => {
+                if (Array.isArray(res)) {
+                  this.jamaahList = res;
+                  if (window.appCoreInstance) {
+                    window.appCoreInstance.jamaahList = res;
+                  }
+                  if (!this.selectedJamaahForPayment && res.length > 0) {
+                    this.selectJamaahForPayment(res[0]);
+                  }
+                  resolve(res);
+                } else if (this.jamaahList && this.jamaahList.length > 0) {
+                  resolve(this.jamaahList);
+                } else {
+                  resolve([]);
+                }
+              })
+              .withFailureHandler(err => {
+                console.warn('Gagal merefresh Data Jamaah dari server, memakai data lokal:', err);
+                resolve(this.jamaahList || []);
+              })
+              .getJamaahList();
+          });
+
+          // 2. Refresh Data Kelengkapan Umrah dari Google Sheet
+          const refreshKelengkapanPromise = new Promise((resolve) => {
+            const handleSuccess = (res) => {
+              const records = (res && res.success && res.data && res.data.records) ? res.data.records :
+                              ((res && res.data && res.data.records) ? res.data.records : (Array.isArray(res) ? res : []));
+              this.kelengkapanList = records;
+              if (window.appCoreInstance) {
+                window.appCoreInstance.kelengkapanUmrahList = records;
+                if (res && res.data && res.data.jamaahList) {
+                  window.appCoreInstance.kelengkapanJamaahMasterList = res.data.jamaahList;
+                }
+              }
+              resolve(records);
+            };
+
+            const handleFallback = () => {
+              try {
+                google.script.run
+                  .withSuccessHandler(handleSuccess)
+                  .withFailureHandler(err2 => {
+                    console.warn('Fallback getKelengkapanUmrahData gagal:', err2);
+                    const fallbackMem = (window.appCoreInstance && window.appCoreInstance.kelengkapanUmrahList) || this.kelengkapanList || [];
+                    resolve(fallbackMem);
+                  })
+                  .getKelengkapanUmrahData();
+              } catch (eFallback) {
+                const fallbackMem = (window.appCoreInstance && window.appCoreInstance.kelengkapanUmrahList) || this.kelengkapanList || [];
+                resolve(fallbackMem);
+              }
+            };
+
+            try {
+              google.script.run
+                .withSuccessHandler(handleSuccess)
+                .withFailureHandler(err => {
+                  console.warn('apiGetKelengkapanUmrahData gagal, coba getKelengkapanUmrahData:', err);
+                  handleFallback();
+                })
+                .apiGetKelengkapanUmrahData(token);
+            } catch (e) {
+              handleFallback();
+            }
+          });
+
+          try {
+            const [freshJamaah, freshKelengkapan] = await Promise.all([refreshJamaahPromise, refreshKelengkapanPromise]);
+            this.isLoading = false;
+
+            if (!freshJamaah || freshJamaah.length === 0) {
+              alert('Tidak ada data jamaah untuk diexport.');
+              return;
+            }
+
+            notify('Menyusun file Excel gabungan data terbaru...', 'info');
+            this.generateAndDownloadExcel(freshJamaah, freshKelengkapan);
+            notify('Datasheet berhasil direfresh dan file Excel telah diunduh!', 'success');
+            return;
+          } catch (eAll) {
+            this.isLoading = false;
+            console.error('Error saat refresh data:', eAll);
+            if (this.jamaahList && this.jamaahList.length > 0) {
+              this.generateAndDownloadExcel(this.jamaahList, this.kelengkapanList || []);
+              notify('File Excel berhasil diunduh menggunakan data lokal.', 'warning');
+            } else {
+              alert('Gagal menyegarkan data untuk diexport: ' + eAll.message);
+            }
+            return;
+          }
+        }
+
+        // Mode Demo Offline / Standalone
+        setTimeout(() => {
+          this.isLoading = false;
+          if (!this.jamaahList || this.jamaahList.length === 0) {
+            this.jamaahList = this.getSampleDemoList();
+          }
+          const kelengkapanList = (window.appCoreInstance && window.appCoreInstance.kelengkapanUmrahList) || this.kelengkapanList || [];
+          this.generateAndDownloadExcel(this.jamaahList, kelengkapanList);
+          notify('Datasheet berhasil direfresh dan file Excel telah diunduh!', 'success');
+        }, 300);
+      },
+
+      generateAndDownloadExcel(jamaahList, kelengkapanList = []) {
+        if (typeof XLSX === 'undefined') {
+          alert('Library XLSX (SheetJS) belum dimuat.');
+          return;
+        }
+
+        // Map data kelengkapan berdasarkan ID Jamaah (lowercase)
+        const kelMap = {};
+        (kelengkapanList || []).forEach(k => {
+          const idJ = String(k.idJamaah || k.id || '').trim().toLowerCase();
+          if (idJ) kelMap[idJ] = k;
+        });
+
+        // Susunan Header Excel Sesuai Lampiran (32 Kolom)
+        const headers = [
+          'Title',
+          'Nama (Sesuai KTP)',
+          'Nama Ayah',
+          'Jenis Identitas',
+          'No Identitas',
+          'Nama Paspor',
+          'No Paspor',
+          'Tanggal Dikeluarkan',
+          'Kota Paspor',
+          'Tempat Lahir',
+          'Tanggal Lahir',
+          'Alamat',
+          'Provinsi',
+          'Kabupaten',
+          'Kecamatan',
+          'Kelurahan',
+          'No. Telepon',
+          'No Hp',
+          'KewargaNegaraan',
+          'Status Pernikahan',
+          'Pendidikan',
+          'Pekerjaan',
+          'Column1',
+          'No Visa',
+          'Tanggal Berlaku',
+          'Tanggal Akhir',
+          'Asuransi',
+          'No Polis',
+          'Tanggal Input',
+          'Tanggal Awal',
+          'Tanggal Akhir',
+          'No BPJS'
+        ];
+
+        // 1. Terapkan Filter Paket & Kantor secara akurat sesuai Dropdown Paket
+        const targetPaket = (this.filterPaket && this.filterPaket !== 'Semua') ? this.filterPaket : '';
+        const isFilterActive = !!targetPaket;
+
+        const targetList = this.getExportJamaahList(jamaahList);
+
+        if (!targetList || targetList.length === 0) {
+          const filterDesc = isFilterActive ? ('Paket: "' + targetPaket + '"') : 'kriteria yang dipilih';
+          alert('Tidak ada data jamaah yang ditemukan untuk ' + filterDesc);
+          return;
+        }
+
+        const rows = [headers];
+
+        targetList.forEach(j => {
+          const idKey = String(j.id || j['ID Jamaah'] || '').trim().toLowerCase();
+          const k = kelMap[idKey] || (j.kelengkapan || {});
+
+          rows.push([
+            String(j.titel || j['Titel'] || this.getAutoTitel(j.jenisKelamin, j.statusPernikahan) || ''),
+            String(j.namaLengkap || j['Nama Lengkap'] || ''),
+            String(j.namaAyah || j['Nama Ayah Kandung'] || j['Nama Ayah'] || ''),
+            String(j.jenisIdentitas || 'KTP'),
+            String(j.noKtp || j['Nomor KTP'] || ''),
+            String(j.namaPaspor || j.namaLengkap || j['Nama Lengkap'] || ''),
+            String(j.noPassport || j['Nomor Passport'] || ''),
+            this.toYmd(j.tglDikeluarkanPaspor || j['Tanggal Dikeluarkan Paspor']),
+            String(j.tempatPaspor || j['Tempat Dikeluarkan Paspor'] || ''),
+            String(j.tempatLahir || j['Tempat Lahir'] || ''),
+            this.toYmd(j.tanggalLahir || j['Tanggal Lahir']),
+            String(j.alamatKtp || j['Alamat KTP'] || ''),
+            String(j.provinsi || j['Provinsi'] || ''),
+            String(j.kabupaten || j['Kabupaten/Kota'] || ''),
+            String(j.kecamatan || j['Kecamatan'] || ''),
+            String(j.kelurahan || j['Kelurahan/Desa'] || ''),
+            String(j.noTelpRumah || j['Nomor Telepon Rumah'] || j.noHp || ''),
+            String(j.noHp || j['Nomor Seluler'] || ''),
+            String(j.kewarganegaraan || j.kewargaNegaraan || 'WNI'),
+            String(j.statusPernikahan || j['Status Pernikahan'] || ''),
+            String(j.pendidikan || j['Pendidikan Terakhir'] || ''),
+            String(j.pekerjaan || j['Pekerjaan'] || ''),
+            String(j.jenisPaket || j['Jenis Paket Umrah'] || ''),
+            String(k.noVisa || ''),
+            this.toYmd(k.tglBerlakuVisa),
+            this.toYmd(k.tglAkhirVisa),
+            String(k.asuransi || k.namaAsuransi || (k.noPolis ? 'Zurich' : '')),
+            String(k.noPolis || ''),
+            this.toYmd(k.tglInputPolis || k.tglInput),
+            this.toYmd(k.tglAwalPolis),
+            this.toYmd(k.tglAkhirPolis),
+            String(k.noBpjs || k.nomorBpjs || '')
+          ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        // Lebar kolom rapi sesuai 32 kolom
+        ws['!cols'] = [
+          { wch: 10 }, // Title
+          { wch: 28 }, // Nama (Sesuai KTP)
+          { wch: 24 }, // Nama Ayah
+          { wch: 16 }, // Jenis Identitas
+          { wch: 22 }, // No Identitas
+          { wch: 28 }, // Nama Paspor
+          { wch: 16 }, // No Paspor
+          { wch: 18 }, // Tanggal Dikeluarkan
+          { wch: 20 }, // Kota Paspor
+          { wch: 20 }, // Tempat Lahir
+          { wch: 15 }, // Tanggal Lahir
+          { wch: 32 }, // Alamat
+          { wch: 18 }, // Provinsi
+          { wch: 20 }, // Kabupaten
+          { wch: 18 }, // Kecamatan
+          { wch: 18 }, // Kelurahan
+          { wch: 16 }, // No. Telepon
+          { wch: 16 }, // No Hp
+          { wch: 16 }, // KewargaNegaraan
+          { wch: 18 }, // Status Pernikahan
+          { wch: 18 }, // Pendidikan
+          { wch: 18 }, // Pekerjaan
+          { wch: 22 }, // Column1
+          { wch: 18 }, // No Visa
+          { wch: 15 }, // Tanggal Berlaku
+          { wch: 15 }, // Tanggal Akhir
+          { wch: 18 }, // Asuransi
+          { wch: 20 }, // No Polis
+          { wch: 15 }, // Tanggal Input
+          { wch: 15 }, // Tanggal Awal
+          { wch: 15 }, // Tanggal Akhir
+          { wch: 18 }  // No BPJS
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "DataJamaah_Kelengkapan");
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const paketSuffix = isFilterActive ? '_' + String(targetPaket).replace(/[^a-zA-Z0-9]/g, '_') : '';
+        const fileName = "Rekap_Data_Jamaah_Kelengkapan_Umrah" + paketSuffix + "_" + todayStr + ".xlsx";
+        XLSX.writeFile(wb, fileName);
+
+        if (window.appCoreInstance && typeof window.appCoreInstance.showToast === 'function') {
+          const msg = isFilterActive 
+            ? 'Data jamaah paket "' + targetPaket + '" (' + targetList.length + ' orang) berhasil diexport ke ' + fileName
+            : 'Seluruh data jamaah (' + targetList.length + ' orang) berhasil diexport ke ' + fileName;
+          window.appCoreInstance.showToast(msg, 'success');
+        }
+      },
+
+      countGender(g) {
+        return this.jamaahList.filter(j => j.jenisKelamin === g).length;
+      },
+
+      countAssignedRooms() {
+        return this.jamaahList.filter(j => (j.noKamarMakkah && j.noKamarMakkah.trim() !== '') || (j.noKamarMadinah && j.noKamarMadinah.trim() !== '')).length;
+      },
+
+      get filteredJamaahList() {
+        const userBranch = (this.activeUserKantor || '').toLowerCase();
+        const searchKw = (this.searchKeyword || '').toLowerCase().trim();
+
+        let list = (this.jamaahList || []).filter(j => {
+          // 1. Logged in user branch match (non-admin)
+          if (userBranch !== '') {
+            const jKantor = String(j.kantorCabang || j.kantor || '').toLowerCase();
+            if (jKantor !== '' && !jKantor.includes(userBranch) && !userBranch.includes(jKantor)) {
+              return false;
+            }
+          }
+
+          // 2. Dropdown Filter Kantor Match
+          if (this.filterKantor && this.filterKantor !== 'Semua') {
+            const fK = this.filterKantor.toLowerCase();
+            const jK = String(j.kantorCabang || j.kantor || '').toLowerCase();
+            if (!jK.includes(fK) && !fK.includes(jK)) {
+              return false;
+            }
+          }
+
+          // 3. Keyword Match (Nama Lengkap, Nama Ayah, NIK/KTP, Paspor, ID, Referensi, Kantor Cabang)
+          const matchKeyword = !searchKw || 
+            (j.namaLengkap && j.namaLengkap.toLowerCase().includes(searchKw)) ||
+            (j.namaAyah && j.namaAyah.toLowerCase().includes(searchKw)) ||
+            (j.noKtp && String(j.noKtp).includes(searchKw)) ||
+            (j.noPassport && j.noPassport.toLowerCase().includes(searchKw)) ||
+            (j.kantorCabang && j.kantorCabang.toLowerCase().includes(searchKw)) ||
+            (j.referensi && j.referensi.toLowerCase().includes(searchKw)) ||
+            (j.id && String(j.id).toLowerCase().includes(searchKw));
+
+          // 4. Dropdown Filter Paket Match (Pencocokan persis sesuai Dropdown Paket yang dipilih)
+          const matchPaket = !this.filterPaket || this.filterPaket === 'Semua' || this.isPaketMatch(j, this.filterPaket);
+
+          // 5. Dropdown Filter Kamar Match
+          const matchKamar = !this.filterKamar || this.filterKamar === 'Semua' || (j.tipeKamar === this.filterKamar);
+
+          // 6. Dropdown Filter Status Match
+          const matchStatus = !this.filterStatus || this.filterStatus === 'Semua' || (j.status === this.filterStatus);
+
+          return matchKeyword && matchPaket && matchKamar && matchStatus;
+        });
+
+        // 7. Pengurutan Data (Sorting - Default Terbaru / Newest)
+        const sortMode = this.sortBy || 'newest';
+        list.sort((a, b) => {
+          if (sortMode === 'oldest') {
+            const idA = String(a.id || '').toUpperCase();
+            const idB = String(b.id || '').toUpperCase();
+            return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+          } else if (sortMode === 'name_asc') {
+            return String(a.namaLengkap || '').localeCompare(String(b.namaLengkap || ''));
+          } else if (sortMode === 'name_desc') {
+            return String(b.namaLengkap || '').localeCompare(String(a.namaLengkap || ''));
+          } else if (sortMode === 'tgl_daftar_desc') {
+            const dateA = new Date(a.tglDaftar || a.timestamp || 0);
+            const dateB = new Date(b.tglDaftar || b.timestamp || 0);
+            return dateB - dateA;
+          } else if (sortMode === 'tgl_keberangkatan_asc') {
+            const dateA = new Date(a.rencanaKeberangkatan || a.tglKeberangkatan || 0);
+            const dateB = new Date(b.rencanaKeberangkatan || b.tglKeberangkatan || 0);
+            return dateA - dateB;
+          } else {
+            // Default: 'newest' (Terbaru - ID / Date Descending)
+            const idA = String(a.id || '').toUpperCase();
+            const idB = String(b.id || '').toUpperCase();
+            return idB.localeCompare(idA, undefined, { numeric: true, sensitivity: 'base' });
+          }
+        });
+
+        return list;
+      },
+
+      get sortedJamaahList() {
+        if (!this.jamaahList) return [];
+        return [...this.jamaahList].sort((a, b) => {
+          const idA = String(a.id || '').toUpperCase();
+          const idB = String(b.id || '').toUpperCase();
+          return idB.localeCompare(idA, undefined, { numeric: true, sensitivity: 'base' });
+        });
+      },
+
+      selectJamaahForPayment(jamaah) {
+        if (!jamaah) {
+          this.selectedJamaahForPayment = null;
+          this.selectedJamaahIdForPayment = '';
+          return;
+        }
+        const id = String(jamaah.id || jamaah['ID Jamaah'] || '').trim();
+        this.selectedJamaahForPayment = jamaah;
+        this.selectedJamaahIdForPayment = id;
+        this.paymentForm.idJamaah = id;
+        this.paymentForm.namaJamaah = jamaah.namaLengkap || jamaah['Nama Lengkap'] || jamaah.nama || '';
+        this.paymentForm.noKtp = jamaah.noKtp || jamaah['Nomor KTP'] || jamaah.nik || '';
+        this.paymentForm.jenisPaket = jamaah.jenisPaket || jamaah['Jenis Paket Umrah'] || 'Paket Reguler';
+        if (typeof this.fetchPaymentHistory === 'function') {
+          this.fetchPaymentHistory(id);
+        }
+      },
+
+      onPaymentJamaahChange() {
+        if (!this.selectedJamaahIdForPayment || String(this.selectedJamaahIdForPayment).trim() === '') {
+          this.selectedJamaahForPayment = null;
+          return;
+        }
+        const targetId = String(this.selectedJamaahIdForPayment).trim();
+        const list = (Array.isArray(this.jamaahList) && this.jamaahList.length > 0) ? this.jamaahList : (typeof this.getSortedJamaahList === 'function' ? this.getSortedJamaahList() : []);
+        const found = list.find(j => String(j.id || j['ID Jamaah'] || '').trim() === targetId);
+        if (found) {
+          this.selectJamaahForPayment(found);
+        } else {
+          this.selectedJamaahForPayment = null;
+        }
+      },
+
+      calculateJamaahPaymentSummary() {
+        if (!this.selectedJamaahForPayment) {
+          return { estimasiPaket: 35000000, totalPaid: 0, sisaTagihan: 35000000, status: 'BELUM DIBAYAR', historyCount: 0 };
+        }
+        let estimasi = 0;
+
+        // Prioritas 1: Ambil langsung dari header TotalHarga / Total Harga / Jumlah Harus Dibayar Sheet Data Jamaah
+        if (this.selectedJamaahForPayment) {
+          estimasi = Number(
+            this.selectedJamaahForPayment.totalHarga ||
+            this.selectedJamaahForPayment.TotalHarga ||
+            this.selectedJamaahForPayment['TotalHarga'] ||
+            this.selectedJamaahForPayment['Total Harga'] ||
+            this.selectedJamaahForPayment.jumlahHarusDibayar ||
+            0
+          );
+        }
+
+        // Prioritas 2: Hitung dari (hargaPaket - potongan - voucher) jika ada
+        if (!estimasi || estimasi <= 0) {
+          const hp = Number(this.selectedJamaahForPayment.hargaPaket || 0);
+          const pot = Number(this.selectedJamaahForPayment.potongan || 0);
+          const vch = Number(this.selectedJamaahForPayment.voucher || 0);
+          if (hp > 0) {
+            estimasi = Math.max(0, hp - pot - vch);
+          }
+        }
+
+        // Prioritas 3: Fallback ke pencocokan paket aktif
+        if (!estimasi || estimasi <= 0) {
+          const jJenisPaket = (this.selectedJamaahForPayment.jenisPaket || '').toLowerCase().trim();
+          const jCabang = (this.selectedJamaahForPayment.kantorCabang || this.selectedJamaahForPayment.cabang || '').toLowerCase().trim();
+
+          const activePakets = (this.paketList || []).filter(p => p.status === 'Aktif');
+          let matchedPaket = activePakets.find(p => p.namaPaket && p.namaPaket.toLowerCase().trim() === jJenisPaket);
+          if (!matchedPaket) {
+            matchedPaket = activePakets.find(p => p.namaPaket && (p.namaPaket.toLowerCase().includes(jJenisPaket) || jJenisPaket.includes(p.namaPaket.toLowerCase())));
+          }
+
+          if (matchedPaket) {
+            if (matchedPaket.hargaWilayah && typeof matchedPaket.hargaWilayah === 'object' && jCabang) {
+              const wKeys = Object.keys(matchedPaket.hargaWilayah);
+              const matchedWKey = wKeys.find(k => k.toLowerCase().trim() === jCabang || jCabang.includes(k.toLowerCase().trim()) || k.toLowerCase().trim().includes(jCabang));
+              if (matchedWKey && Number(matchedPaket.hargaWilayah[matchedWKey]) > 0) {
+                estimasi = Number(matchedPaket.hargaWilayah[matchedWKey]);
+              }
+            }
+            if (!estimasi && matchedPaket.hargaDasar > 0) {
+              estimasi = Number(matchedPaket.hargaDasar);
+            }
+          }
+        }
+
+        if (!estimasi || estimasi <= 0) {
+          estimasi = 35000000;
+          const jJenisPaket = (this.selectedJamaahForPayment.jenisPaket || '').toLowerCase().trim();
+          if (jJenisPaket.includes('vip')) estimasi = 45000000;
+          else if (jJenisPaket.includes('ekonomi') || jJenisPaket.includes('hemat')) estimasi = 28000000;
+        }
+
+        const totalPaid = (this.currentJamaahPaymentHistory || []).reduce((sum, item) => sum + Number(item.jumlahPembayaran || 0), 0);
+        const sisaTagihan = Math.max(0, estimasi - totalPaid);
+        let status = 'BELUM DIBAYAR';
+        if (sisaTagihan === 0 || totalPaid >= estimasi) {
+          status = 'LUNAS';
+        } else if (totalPaid > 0) {
+          status = 'DP / CICILAN';
+        }
+        return {
+          estimasiPaket: estimasi,
+          totalPaid: totalPaid,
+          sisaTagihan: sisaTagihan,
+          status: status,
+          historyCount: (this.currentJamaahPaymentHistory || []).length
+        };
+      },
+
+      getPaymentStatusBadgeClass(status) {
+        if (status === 'LUNAS') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+        if (status === 'DP / CICILAN') return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+        return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+      },
+
+      fetchPaymentHistory(jamaahId) {
+        if (!jamaahId) return;
+        const self = this;
+        const token = (typeof currentToken !== 'undefined') ? currentToken : '';
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (Array.isArray(res)) {
+                self.currentJamaahPaymentHistory = res;
+              } else if (res && res.success && Array.isArray(res.data)) {
+                self.currentJamaahPaymentHistory = res.data;
+              } else {
+                self.currentJamaahPaymentHistory = [];
+              }
+            })
+            .withFailureHandler(function() {
+              google.script.run
+                .withSuccessHandler(function(data) { self.currentJamaahPaymentHistory = data || []; })
+                .getPaymentHistory(jamaahId);
+            })
+            .apiGetPaymentHistory(jamaahId, token);
+        } else {
+          // Demo fallback
+          self.currentJamaahPaymentHistory = [
+            { idKwitansi: 'KWT-2026-0001', tglBayar: '2026-09-01', idJamaah: jamaahId, namaJamaah: (self.selectedJamaahForPayment ? self.selectedJamaahForPayment.namaLengkap : 'Jamaah'), noKtp: '3171012345670001', jenisPaket: 'Paket VIP', jumlahPembayaran: 10000000, tipePembayaran: 'DP / Uang Muka', metodePembayaran: 'Transfer Bank', namaBank: 'BSI (Bank Syariah Indonesia)', noReferensi: 'TRF-889901', userInput: 'Admin' }
+          ];
+        }
+      },
+
+      submitPaymentForm() {
+        if (!this.paymentForm.idJamaah || this.paymentForm.jumlahPembayaran <= 0) {
+          alert('Pilih Jamaah dan isi nominal pembayaran dengan benar!');
+          return;
+        }
+
+        const confirmMsg = `Apakah Data Pembayaran Ini akan di Rekam?\n\n` +
+          `• Nama Jamaah: ${this.paymentForm.namaJamaah || '-'}\n` +
+          `• Nominal: ${this.formatRupiah(this.paymentForm.jumlahPembayaran)}\n` +
+          `• Tipe Pembayaran: ${this.paymentForm.tipePembayaran}\n` +
+          `• Metode: ${this.paymentForm.metodePembayaran}` +
+          (this.paymentFileSelected ? `\n• Berkas Bukti TF: ${this.paymentFileSelected.name}` : '');
+
+        if (!confirm(confirmMsg)) {
+          return;
+        }
+
+        this.isSubmittingPayment = true;
+        const self = this;
+        const payload = Object.assign({}, this.paymentForm, {
+          estimasiHargaPaket: this.calculateJamaahPaymentSummary().estimasiPaket
+        });
+        const token = (typeof currentToken !== 'undefined') ? currentToken : '';
+
+        const executeSave = (finalPayload) => {
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(function(res) {
+                self.isSubmittingPayment = false;
+                if (res && res.success) {
+                  self.fetchPaymentHistory(self.paymentForm.idJamaah);
+                  self.paymentForm.jumlahPembayaran = 5000000;
+                  self.paymentForm.noReferensi = '';
+                  self.paymentForm.keterangan = '';
+                  self.paymentForm.uploadBuktiTransfer = '';
+                  self.paymentFileSelected = null;
+                  if (self.$refs && self.$refs.paymentFileInput) self.$refs.paymentFileInput.value = '';
+                } else {
+                  alert('Gagal: ' + (res ? res.message : 'Terjadi kesalahan.'));
+                }
+              })
+              .withFailureHandler(function(err) {
+                google.script.run
+                  .withSuccessHandler(function(res) {
+                    self.isSubmittingPayment = false;
+                    if (res && res.success) {
+                      self.fetchPaymentHistory(self.paymentForm.idJamaah);
+                      self.paymentForm.jumlahPembayaran = 5000000;
+                      self.paymentForm.noReferensi = '';
+                      self.paymentForm.keterangan = '';
+                      self.paymentForm.uploadBuktiTransfer = '';
+                      self.paymentFileSelected = null;
+                      if (self.$refs && self.$refs.paymentFileInput) self.$refs.paymentFileInput.value = '';
+                    }
+                  })
+                  .saveJamaahPayment(finalPayload, 'Admin');
+              })
+              .apiSaveJamaahPayment(finalPayload, token);
+          } else {
+            // Simulasi mode offline browser
+            self.isSubmittingPayment = false;
+            const kwtDummyId = 'KWT-2026-000' + (self.currentJamaahPaymentHistory.length + 1);
+            let dummyUrl = finalPayload.uploadBuktiTransfer || '';
+            if (self.paymentFileSelected) {
+              const ext = self.paymentFileSelected.name.substring(self.paymentFileSelected.name.lastIndexOf('.'));
+              dummyUrl = 'https://drive.google.com/sample_' + kwtDummyId + ' - ' + (finalPayload.namaJamaah || 'Jamaah') + ext;
+            }
+            const dummyRes = {
+              idKwitansi: kwtDummyId,
+              tglBayar: finalPayload.tglBayar,
+              idJamaah: finalPayload.idJamaah,
+              namaJamaah: finalPayload.namaJamaah,
+              noKtp: finalPayload.noKtp,
+              jenisPaket: finalPayload.jenisPaket,
+              jumlahPembayaran: finalPayload.jumlahPembayaran,
+              tipePembayaran: finalPayload.tipePembayaran,
+              metodePembayaran: finalPayload.metodePembayaran,
+              namaBank: finalPayload.namaBank,
+              noReferensi: finalPayload.noReferensi,
+              keterangan: finalPayload.keterangan,
+              uploadBuktiTransfer: dummyUrl,
+              userInput: 'Admin'
+            };
+            self.currentJamaahPaymentHistory.unshift(dummyRes);
+            self.paymentForm.jumlahPembayaran = 5000000;
+            self.paymentForm.noReferensi = '';
+            self.paymentForm.keterangan = '';
+            self.paymentForm.uploadBuktiTransfer = '';
+            self.paymentFileSelected = null;
+            if (self.$refs && self.$refs.paymentFileInput) self.$refs.paymentFileInput.value = '';
+          }
+        };
+
+        if (this.paymentFileSelected) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            payload.fileBase64 = e.target.result;
+            payload.fileName = this.paymentFileSelected.name;
+            payload.fileMimeType = this.paymentFileSelected.type;
+            executeSave(payload);
+          };
+          reader.onerror = () => {
+            this.isSubmittingPayment = false;
+            alert('Gagal membaca berkas bukti transfer lokal.');
+          };
+          reader.readAsDataURL(this.paymentFileSelected);
+        } else {
+          executeSave(payload);
+        }
+      },
+
+      openKwitansiModal(item) {
+        this.printKwitansiData = item;
+        this.showKwitansiModal = true;
+      },
+
+      formatRupiah(n) {
+        n = Number(n);
+        if (isNaN(n) || n === 0) return 'Rp 0';
+        return 'Rp ' + n.toLocaleString('id-ID');
+      },
+
+      formatIndoDate(dateStr) {
+        if (!dateStr || dateStr === '-' || dateStr === 'null' || dateStr === 'undefined') return '-';
+        if (typeof dateStr !== 'string') dateStr = String(dateStr);
+        let cleanStr = dateStr.trim();
+        if (!cleanStr || cleanStr === '-' || cleanStr === 'null' || cleanStr === 'undefined') return '-';
+
+        const months = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+
+        if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
+          const parts = cleanStr.substring(0, 10).split('-');
+          const year = parts[0];
+          const monthIdx = parseInt(parts[1], 10) - 1;
+          const day = String(parseInt(parts[2], 10)).padStart(2, '0');
+          if (monthIdx >= 0 && monthIdx < 12 && !isNaN(parseInt(day, 10))) {
+            return `${day} ${months[monthIdx]} ${year}`;
+          }
+        }
+
+        if (/^\d{1,2}[-/]\d{1,2}[-/]\d{4}/.test(cleanStr)) {
+          const parts = cleanStr.split(' ')[0].split(/[-/]/);
+          const day = String(parseInt(parts[0], 10)).padStart(2, '0');
+          const monthIdx = parseInt(parts[1], 10) - 1;
+          const year = parts[2];
+          if (monthIdx >= 0 && monthIdx < 12 && !isNaN(parseInt(day, 10))) {
+            return `${day} ${months[monthIdx]} ${year}`;
+          }
+        } else if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(cleanStr)) {
+          const parts = cleanStr.split(' ')[0].split(/[-/]/);
+          const year = parts[0];
+          const monthIdx = parseInt(parts[1], 10) - 1;
+          const day = String(parseInt(parts[2], 10)).padStart(2, '0');
+          if (monthIdx >= 0 && monthIdx < 12 && !isNaN(parseInt(day, 10))) {
+            return `${day} ${months[monthIdx]} ${year}`;
+          }
+        }
+
+        try {
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = months[d.getMonth()];
+            const year = d.getFullYear();
+            return `${day} ${month} ${year}`;
+          }
+        } catch (e) {}
+
+        return dateStr;
+      },
+
+      canDeletePayment(item) {
+        if (!item) return false;
+        const currentUser = (window.userActive && window.userActive.nama) ? window.userActive.nama : 'Admin';
+        const currentRole = (window.userActive && window.userActive.role) ? window.userActive.role : 'Admin';
+        if (currentRole === 'Admin' || currentRole === 'Manager') return true;
+        return item.userInput === currentUser;
+      },
+
+      confirmDeletePayment(item) {
+        if (!item || !item.idKwitansi) return;
+        if (!confirm(`Apakah Anda yakin ingin menghapus data pembayaran kwitansi ${item.idKwitansi} sebesar ${this.formatRupiah(item.jumlahPembayaran)}?`)) {
+          return;
+        }
+
+        const self = this;
+        const userActive = (window.userActive && window.userActive.nama) ? window.userActive.nama : 'Admin';
+        const token = (typeof currentToken !== 'undefined') ? currentToken : '';
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success) {
+                if (window.appCoreInstance) {
+                  window.appCoreInstance.showToast(res.message || 'Pembayaran berhasil dihapus.', 'success');
+                } else {
+                  alert(res.message || 'Pembayaran berhasil dihapus.');
+                }
+                self.fetchPaymentHistory(self.paymentForm.idJamaah);
+              } else {
+                alert('Gagal menghapus: ' + (res ? res.message : 'Terjadi kesalahan.'));
+              }
+            })
+            .withFailureHandler(function() {
+              google.script.run
+                .withSuccessHandler(function(res) {
+                  if (res && res.success) {
+                    alert(res.message || 'Pembayaran berhasil dihapus.');
+                    self.fetchPaymentHistory(self.paymentForm.idJamaah);
+                  }
+                })
+                .deleteJamaahPayment(item.idKwitansi, userActive);
+            })
+            .apiDeleteJamaahPayment(item.idKwitansi, token);
+        } else {
+          // Demo fallback
+          self.currentJamaahPaymentHistory = self.currentJamaahPaymentHistory.filter(h => h.idKwitansi !== item.idKwitansi);
+          alert('Data pembayaran berhasil dihapus (Demo).');
+        }
+      },
+
+      terbilangIndo(n) {
+        n = Number(n);
+        if (isNaN(n) || n <= 0) return 'Nol Rupiah';
+        const angka = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+        function bilang(x) {
+          x = Math.floor(x);
+          if (x < 12) return angka[x];
+          else if (x < 20) return bilang(x - 10) + " Belas";
+          else if (x < 100) return bilang(x / 10) + " Puluh" + (x % 10 !== 0 ? " " + bilang(x % 10) : "");
+          else if (x < 200) return "Seratus" + (x - 100 !== 0 ? " " + bilang(x - 100) : "");
+          else if (x < 1000) return bilang(x / 100) + " Ratus" + (x % 100 !== 0 ? " " + bilang(x % 100) : "");
+          else if (x < 2000) return "Seribu" + (x - 1000 !== 0 ? " " + bilang(x - 1000) : "");
+          else if (x < 1000000) return bilang(x / 1000) + " Ribu" + (x % 1000 !== 0 ? " " + bilang(x % 1000) : "");
+          else if (x < 1000000000) return bilang(x / 1000000) + " Juta" + (x % 1000000 !== 0 ? " " + bilang(x % 1000000) : "");
+          else if (x < 1000000000000) return bilang(x / 1000000000) + " Milyar" + (x % 1000000000 !== 0 ? " " + bilang(x % 1000000000) : "");
+          return "";
+        }
+        return (bilang(n).replace(/\s+/g, ' ').trim()) + " Rupiah";
+      },
+
+      get groupedRoomingList() {
+        const groups = {};
+        const isMakkah = this.selectedCityRooming === 'Makkah';
+
+        this.jamaahList.forEach(j => {
+          const roomNo = isMakkah ? j.noKamarMakkah : j.noKamarMadinah;
+          const hotelName = isMakkah ? j.hotelMakkah : j.hotelMadinah;
+
+          if (roomNo && roomNo.trim() !== '') {
+            if (!groups[roomNo]) {
+              groups[roomNo] = {
+                hotel: hotelName,
+                tipeKamar: j.tipeKamar || 'Quad',
+                members: []
+              };
+            }
+            groups[roomNo].members.push(j);
+          }
+        });
+
+        return groups;
+      }
+    };
+  }
+</script>
+</div>

@@ -1,0 +1,61 @@
+<div x-show="currentModule === 'mod_inventory'" class="space-y-6" x-transition>
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
+    <div>
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold rounded-full mb-2">
+        <i class="fa-solid fa-plug text-[10px]"></i>
+        <span>Modul Terpasang (Plug-and-Play)</span>
+      </div>
+      <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+        <i class="fa-solid fa-boxes-stacked text-emerald-400"></i>
+        <span>Manajemen Inventaris Perusahaan</span>
+      </h2>
+      <p class="text-xs text-slate-400 mt-1">Lacak stok aset kantor, lokasi gudang, dan peminjaman perangkat</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button @click="loadInventoryData()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-all flex items-center gap-2">
+        <i class="fa-solid fa-rotate text-emerald-400"></i>
+        <span>Refresh Stok</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Inventory Data Table -->
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+          <tr>
+            <th class="py-3.5 px-4">Kode Barang</th>
+            <th class="py-3.5 px-4">Nama Aset / Barang</th>
+            <th class="py-3.5 px-4">Kategori</th>
+            <th class="py-3.5 px-4">Jumlah Stok</th>
+            <th class="py-3.5 px-4">Lokasi Gudang</th>
+            <th class="py-3.5 px-4">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+          <template x-for="item in inventoryList" :key="item.code">
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="py-3.5 px-4 font-mono text-cyan-400" x-text="item.code"></td>
+              <td class="py-3.5 px-4 font-semibold text-slate-100" x-text="item.name"></td>
+              <td class="py-3.5 px-4 text-slate-400" x-text="item.category"></td>
+              <td class="py-3.5 px-4 font-bold text-slate-200">
+                <span x-text="item.qty"></span> <span class="text-[11px] font-normal text-slate-400" x-text="item.unit"></span>
+              </td>
+              <td class="py-3.5 px-4 text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-warehouse text-emerald-400 text-xs"></i>
+                <span x-text="item.location"></span>
+              </td>
+              <td class="py-3.5 px-4">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                  :class="item.status === 'Tersedia' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'"
+                  x-text="item.status"></span>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

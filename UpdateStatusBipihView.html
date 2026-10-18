@@ -1,0 +1,811 @@
+<!-- ============================================================================ -->
+<!-- MODUL UPDATE STATUS BIPIH (mod_update_status_bipih)                           -->
+<!-- Single Unified Main Card: Form Input (Kiri) & Riwayat Transaksi (Kanan)       -->
+<!-- ============================================================================ -->
+<div
+  x-show="currentModule === 'mod_update_status_bipih' || currentModule === 'mod_update_bipih' || (typeof isUpdateStatusBipihModule === 'function' && isUpdateStatusBipihModule(currentModule, currentModuleName))"
+  x-init="loadUpdateStatusBipihData()" class="space-y-6" x-transition x-cloak>
+
+  <!-- SINGLE UNIFIED MAIN CARD CONTAINER -->
+  <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+
+    <!-- 1. UNIFIED CARD HEADER (Hanya 1 Header Modul) -->
+    <div
+      class="p-4 sm:p-5 bg-slate-950 border-b border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5 w-full sm:w-auto">
+        <div
+          class="w-12 h-12 rounded-2xl bg-slate-900 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 shadow-lg shadow-cyan-500/10 overflow-hidden p-1">
+          <img src="https://lh3.googleusercontent.com/d/1P-mm5_Wx1z1MJ3eBrglcC0pdJ_gAbVCF"
+            onerror="this.src='https://drive.google.com/thumbnail?id=1P-mm5_Wx1z1MJ3eBrglcC0pdJ_gAbVCF&sz=w500'"
+            alt="Logo Fath Indah" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-base font-extrabold text-slate-100 tracking-tight">Update Status BIPIH</h2>
+            <span
+              class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">Fath
+              Indah Travel</span>
+            <span
+              class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 font-mono">Sheet:
+              UpdateBIPIH</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Pembaruan Status Pelunasan BIPIH & Riwayat Transaksi</p>
+        </div>
+      </div>
+
+      <!-- Header Toolbar Actions -->
+      <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <div class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-2 text-xs">
+          <span class="text-slate-400">Total History:</span>
+          <span class="text-cyan-400 font-bold font-mono" x-text="updateStatusBipihHistory.length">0</span>
+        </div>
+
+        <button @click="loadUpdateStatusBipihData(true)"
+          class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate" :class="{'fa-spin': isUpdateStatusBipihLoading}"></i>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. CARD BODY: GRID 2 KOLOM (FORM INPUT KIRI & RIWAYAT HISTORY KANAN) -->
+    <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- ========================================================================= -->
+      <!-- KOLOM KIRI (lg:col-span-6): FORM INPUT PELUNASAN BIPIH                  -->
+      <!-- ========================================================================= -->
+      <div class="lg:col-span-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 class="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-pen-to-square text-amber-400 text-sm"></i>
+            <span>Form Input Update BIPIH</span>
+          </h3>
+          <span class="text-[10px] text-slate-400 font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+            <i class="fa-brands fa-google-drive text-cyan-400 mr-1"></i>Drive Sync
+          </span>
+        </div>
+
+        <form @submit.prevent="submitUpdateBipihForm()" class="space-y-4">
+
+          <!-- SECTION 1: DATA JAMAAH -->
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-2xl space-y-3 shadow-inner">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 class="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-address-card text-amber-400 text-xs"></i>
+                <span>1. DATA JAMAAH</span>
+              </h4>
+              <span class="text-[10px] text-slate-500 font-mono">Sheet DataJamaahHaji</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <!-- Dropdown & Autocomplete No. BPIH -->
+              <div class="space-y-1.5 relative">
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                  <span>a. No. BPIH (Pilih / Cari)</span>
+                  <span class="text-rose-400">*</span>
+                </label>
+                <div class="relative">
+                  <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                  <input type="text" x-model="searchBipihJamaahInput"
+                    @input="showBipihJamaahDropdown = true; filterJamaahDropdownForBipih()"
+                    @focus="showBipihJamaahDropdown = true; if (!bipihJamaahOptions || bipihJamaahOptions.length === 0) loadUpdateStatusBipihData(true); filterJamaahDropdownForBipih();"
+                    placeholder="Cari No. BPIH atau Nama..."
+                    class="w-full pl-8 pr-8 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-amber-300 font-mono font-bold placeholder-slate-500 focus:outline-none focus:border-amber-400">
+                  <button type="button" x-show="searchBipihJamaahInput" @click="clearSelectedJamaahForBipih()"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+
+                  <!-- Autocomplete Results Dropdown Panel -->
+                  <div x-show="showBipihJamaahDropdown" @click.away="showBipihJamaahDropdown = false"
+                    class="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-40 max-h-56 overflow-y-auto divide-y divide-slate-800"
+                    x-transition x-cloak>
+
+                    <!-- Loading State -->
+                    <template
+                      x-if="isUpdateStatusBipihLoading && (!bipihJamaahOptions || bipihJamaahOptions.length === 0)">
+                      <div class="p-3 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-notch animate-spin text-amber-400"></i>
+                        <span>Memuat data Jamaah dari Sheet...</span>
+                      </div>
+                    </template>
+
+                    <!-- Empty State -->
+                    <template x-if="!isUpdateStatusBipihLoading && filteredBipihJamaahList.length === 0">
+                      <div class="p-3 text-center text-slate-400 text-xs">
+                        Tidak ada data Jamaah (NoBPIH / Nama) ditemukan.
+                      </div>
+                    </template>
+
+                    <!-- Items List -->
+                    <template x-if="filteredBipihJamaahList.length > 0">
+                      <div>
+                        <template x-for="j in filteredBipihJamaahList" :key="j._rowIndex">
+                          <div @click="selectJamaahForBipihForm(j)"
+                            class="p-2.5 hover:bg-slate-800/80 cursor-pointer transition-colors flex items-center justify-between text-xs">
+                            <div>
+                              <span class="font-bold text-slate-100 block" x-text="j.nama"></span>
+                              <span class="text-[10px] text-amber-400 font-mono"
+                                x-text="'No. BPIH: ' + (j.noBpih || '-')"></span>
+                            </div>
+                            <span
+                              class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-800 text-cyan-300 border border-slate-700"
+                              x-text="j.jenisHaji || 'Setoran Awal'"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span class="text-slate-500">Selected No. BPIH:</span>
+                  <span class="font-mono font-bold text-amber-400" x-text="formUpdateBipih.noBpih || '-'"></span>
+                </div>
+              </div>
+
+              <!-- Nama Jamaah (Readonly View Only) -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">b. Nama Jamaah (View Only)</label>
+                <input type="text" x-model="formUpdateBipih.namaJamaah" readonly placeholder="Terisi otomatis..."
+                  class="w-full p-2 bg-slate-900/60 border border-slate-800 rounded-xl text-xs text-slate-100 font-bold placeholder-slate-600 cursor-not-allowed focus:outline-none">
+                <p class="text-[10px] text-slate-400 font-mono">* Otomatis dari Sheet DataJamaahHaji</p>
+              </div>
+
+              <!-- Tahun Lunas Hijriah -->
+              <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                  <span>c. Tahun Lunas Hijriah</span>
+                  <span class="text-rose-400">*</span>
+                </label>
+                <div class="flex items-center gap-2">
+                  <select x-model="formUpdateBipih.tahunLunasHijriahSelect"
+                    @change="checkAndAutofillExistingBipihRecord()"
+                    class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-cyan-300 font-mono font-bold focus:outline-none focus:border-cyan-400">
+                    <option value="">-- Pilih Tahun --</option>
+                    <option value="1447H">1447H</option>
+                    <option value="1448H">1448H</option>
+                    <option value="1449H">1449H</option>
+                    <option value="1450H">1450H</option>
+                    <option value="custom">Lainnya...</option>
+                  </select>
+                  <template x-if="formUpdateBipih.tahunLunasHijriahSelect === 'custom'">
+                    <input type="text" x-model="formUpdateBipih.tahunLunasHijriahCustom"
+                      @input="checkAndAutofillExistingBipihRecord()" placeholder="1451H"
+                      class="w-20 p-2 bg-slate-900 border border-cyan-500 rounded-xl text-xs text-cyan-300 font-mono font-bold focus:outline-none">
+                  </template>
+                </div>
+              </div>
+
+              <!-- Bank (Dropdown) -->
+              <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                  <span>d. Bank</span>
+                  <span class="text-rose-400">*</span>
+                </label>
+                <select x-model="formUpdateBipih.bank"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+                  <option value="">-- Pilih Bank --</option>
+                  <template x-for="b in bankOptionsList" :key="b">
+                    <option :value="b" x-text="b"></option>
+                  </template>
+                </select>
+              </div>
+
+              <!-- Harga Paket Haji (USD) -->
+              <div class="space-y-1.5 sm:col-span-1 lg:col-span-1">
+                <label class="text-xs font-semibold text-slate-300">e. Harga Paket Haji (USD)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">$</span>
+                  <input type="text" x-model="formUpdateBipih.hargaPaketHaji" @input="formUpdateBipih.hargaPaketHaji = formatCurrencyStr($event.target.value)" placeholder="0"
+                    class="w-full pl-7 p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-cyan-400">
+                </div>
+              </div>
+
+              <!-- Kurs (Rupiah) -->
+              <div class="space-y-1.5 sm:col-span-1 lg:col-span-1">
+                <label class="text-xs font-semibold text-slate-300">f. Kurs (Rupiah)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">Rp</span>
+                  <input type="text" x-model="formUpdateBipih.kurs" @input="formUpdateBipih.kurs = formatCurrencyStr($event.target.value)" placeholder="0"
+                    class="w-full pl-8 p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-cyan-300 font-mono font-bold focus:outline-none focus:border-cyan-400">
+                </div>
+              </div>
+
+              <!-- Tipe Kamar -->
+              <div class="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <label class="text-xs font-semibold text-slate-300">g. Tipe Kamar</label>
+                <div class="flex items-center gap-2">
+                  <select x-model="formUpdateBipih.tipeKamarSelect"
+                    class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+                    <option value="">-- Pilih Tipe --</option>
+                    <option value="Double">Double</option>
+                    <option value="Triple">Triple</option>
+                    <option value="Quad">Quad</option>
+                    <option value="custom">Manual...</option>
+                  </select>
+                  <template x-if="formUpdateBipih.tipeKamarSelect === 'custom'">
+                    <input type="text" x-model="formUpdateBipih.tipeKamarCustom" placeholder="Ketik disini..."
+                      class="w-full p-2 bg-slate-900 border border-cyan-500 rounded-xl text-xs text-cyan-300 focus:outline-none focus:border-cyan-400">
+                  </template>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Indicator Badge if Existing Record in Sheet UpdateBIPIH is found -->
+            <template x-if="formUpdateBipih.isExistingRecordFound">
+              <div
+                class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between font-mono animate-pulse">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-circle-check text-cyan-400 text-sm"></i>
+                  <span>Data riwayat dari Sheet UpdateBIPIH ditemukan & otomatis diisikan!</span>
+                </div>
+                <span class="text-[10px] text-slate-400" x-text="'ID: ' + formUpdateBipih.existingTrxId"></span>
+              </div>
+            </template>
+          </div>
+
+          <!-- SECTION 2: PELUNASAN -->
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-2xl space-y-3 shadow-inner">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 class="text-xs font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-file-circle-check text-cyan-400 text-xs"></i>
+                <span>2. PELUNASAN</span>
+              </h4>
+              <span
+                class="text-[10px] text-cyan-400 font-mono bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">Folder
+                Drive Setor Lunas</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Tanggal Pelunasan -->
+              <div class="space-y-1.5 sm:col-span-1">
+                <label class="text-xs font-semibold text-slate-300">a. Tanggal Pelunasan</label>
+                <input type="date" x-model="formUpdateBipih.tanggalPelunasan"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Upload Bukti Setor Lunas -->
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="text-xs font-semibold text-slate-300">b. Upload Bukti Setor Lunas</label>
+                <input type="file" @change="handleBipihBuktiFileSelect($event)" accept="image/*,application/pdf"
+                  class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20 file:cursor-pointer border border-slate-700/80 rounded-xl bg-slate-900 p-1">
+                <p class="text-[10px] text-slate-500 font-mono">Format file: "BPIHLunas - Tahun - NoBPIH - Nama"</p>
+                <template x-if="bipihBuktiFilePayload">
+                  <div class="text-[10px] text-cyan-400 font-mono flex items-center gap-1.5 mt-1">
+                    <i class="fa-solid fa-file-check"></i>
+                    <span x-text="'File Baru: ' + bipihBuktiFilePayload.fileName"></span>
+                  </div>
+                </template>
+                <template
+                  x-if="!bipihBuktiFilePayload && formUpdateBipih.buktiSetorLunas && isDriveLinkValue(formUpdateBipih.buktiSetorLunas)">
+                  <div class="text-[10px] text-emerald-400 font-mono flex items-center gap-1.5 mt-1">
+                    <i class="fa-solid fa-link"></i>
+                    <span>Bukti Setor Lunas Ada: <a :href="formUpdateBipih.buktiSetorLunas" target="_blank"
+                        class="underline hover:text-emerald-300">Buka Link Drive</a></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 3: PENGAJUAN PENGEMBALIAN KEUANGAN (PK) -->
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-2xl space-y-3 shadow-inner">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 class="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-hand-holding-dollar text-emerald-400 text-xs"></i>
+                <span>3. PENGAJUAN PENGEMBALIAN KEUANGAN (PK)</span>
+              </h4>
+              <span
+                class="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Folder
+                Drive PK</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Status PK -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">a. Status PK (Default: -)</label>
+                <select x-model="formUpdateBipih.statusPk"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-emerald-300 font-bold focus:outline-none focus:border-cyan-400">
+                  <option value="Diajukan">Diajukan</option>
+                  <option value="Ditolak">Ditolak</option>
+                  <option value="Proses">Proses</option>
+                  <option value="Selesai">Selesai</option>
+                  <option value="-">-</option>
+                </select>
+              </div>
+
+              <!-- Tanggal PK -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">b. Tanggal PK</label>
+                <input type="date" x-model="formUpdateBipih.tanggalPk"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Upload Dokumen PK -->
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="text-xs font-semibold text-slate-300">c. Upload Dokumen PK</label>
+                <input type="file" @change="handleBipihPkFileSelect($event)" accept="image/*,application/pdf"
+                  class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 file:cursor-pointer border border-slate-700/80 rounded-xl bg-slate-900 p-1">
+                <p class="text-[10px] text-slate-500 font-mono">Format file: "PK - NoBPIH - Nama"</p>
+                <template x-if="bipihPkFilePayload">
+                  <div class="text-[10px] text-emerald-400 font-mono flex items-center gap-1.5 mt-1">
+                    <i class="fa-solid fa-file-check"></i>
+                    <span x-text="'File PK: ' + bipihPkFilePayload.fileName"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 4: PENERIMAAN PENGEMBALIAN KEUANGAN (PK) -->
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-2xl space-y-3 shadow-inner">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 class="text-xs font-extrabold text-teal-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-money-bill-transfer text-teal-400 text-xs"></i>
+                <span>4. PENERIMAAN PENGEMBALIAN KEUANGAN (PK)</span>
+              </h4>
+              <span class="text-[10px] text-teal-400 font-mono bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">Data PK 2</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Status PK 2 -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">a. Status PK 2 (Default: -)</label>
+                <select x-model="formUpdateBipih.statusPk2"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-400">
+                  <option value="Diterima">Diterima</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Proses">Proses</option>
+                  <option value="Selesai">Selesai</option>
+                  <option value="-">-</option>
+                </select>
+              </div>
+
+              <!-- Tanggal PK 2 -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">b. Tanggal PK 2</label>
+                <input type="date" x-model="formUpdateBipih.tanggalPk2"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Nomor Jurnal Sistem -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">c. Nomor Jurnal Sistem</label>
+                <input type="text" x-model="formUpdateBipih.noJurnal" placeholder="Nomor Jurnal"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Bank Terima PK -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">d. Bank Terima PK</label>
+                <select x-model="formUpdateBipih.bankTerimaPk"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+                  <option value="">-- Pilih Bank --</option>
+                  <template x-for="b in bankOptionsList" :key="b">
+                    <option :value="b" x-text="b"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 5: PENERIMAAN NILAI MANFAAT -->
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-2xl space-y-3 shadow-inner">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 class="text-xs font-extrabold text-purple-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-sack-dollar text-purple-400 text-xs"></i>
+                <span>5. PENERIMAAN NILAI MANFAAT</span>
+              </h4>
+              <span class="text-[10px] text-purple-400 font-mono bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">Data Nilai Manfaat</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <!-- Tanggal Penerimaan -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">a. Tanggal Penerimaan</label>
+                <input type="date" x-model="formUpdateBipih.tglTerimaNilaiManfaat"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Bank -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">b. Bank</label>
+                <select x-model="formUpdateBipih.bankNilaiManfaat"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+                  <option value="">-- Pilih Bank --</option>
+                  <template x-for="b in bankOptionsList" :key="b">
+                    <option :value="b" x-text="b"></option>
+                  </template>
+                </select>
+              </div>
+
+              <!-- Jumlah USD -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">c. Jumlah USD</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">$</span>
+                  <input type="text" x-model="formUpdateBipih.jumlahUsdNilaiManfaat" @input="formUpdateBipih.jumlahUsdNilaiManfaat = formatCurrencyStr($event.target.value)" placeholder="0"
+                    class="w-full pl-7 p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-cyan-400">
+                </div>
+              </div>
+
+              <!-- Kurs -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">d. Kurs</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">Rp</span>
+                  <input type="text" x-model="formUpdateBipih.kursNilaiManfaat" @input="formUpdateBipih.kursNilaiManfaat = formatCurrencyStr($event.target.value)" placeholder="0"
+                    class="w-full pl-8 p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-cyan-300 font-mono font-bold focus:outline-none focus:border-cyan-400">
+                </div>
+              </div>
+
+              <!-- No. Jurnal -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">e. No. Jurnal</label>
+                <input type="text" x-model="formUpdateBipih.noJurnalNilaiManfaat" placeholder="Nomor Jurnal"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Keterangan -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">f. Keterangan</label>
+                <input type="text" x-model="formUpdateBipih.ketNilaiManfaat" placeholder="Keterangan..."
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 6: PENUNDAAN (TUNDA) -->
+          <div class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-2xl space-y-3 shadow-inner">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 class="text-xs font-extrabold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-calendar-xmark text-blue-400 text-xs"></i>
+                <span>6. PENUNDAAN (TUNDA)</span>
+              </h4>
+              <span
+                class="text-[10px] text-blue-400 font-mono bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">Data
+                Tunda</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Tanggal Tunda -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">a. Tanggal Tunda</label>
+                <input type="date" x-model="formUpdateBipih.tglTunda"
+                  class="w-full p-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400">
+              </div>
+
+              <!-- Upload Bukti Transfer Tunda -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-300">b. Upload Bukti Transfer Tunda</label>
+                <input type="file" @change="handleBipihTundaFileSelect($event)" accept="image/*,application/pdf"
+                  class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 file:cursor-pointer border border-slate-700/80 rounded-xl bg-slate-900 p-1">
+                <template x-if="bipihTundaFilePayload">
+                  <div class="text-[10px] text-blue-400 font-mono flex items-center gap-1.5 mt-1">
+                    <i class="fa-solid fa-file-check"></i>
+                    <span x-text="'File Tunda: ' + bipihTundaFilePayload.fileName"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+            <button type="button" @click="resetFormUpdateBipih()"
+              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all">
+              Reset Form
+            </button>
+            <button type="submit" :disabled="isSavingUpdateBipih"
+              class="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20 disabled:opacity-50">
+              <i class="fa-solid"
+                :class="isSavingUpdateBipih ? 'fa-circle-notch animate-spin' : 'fa-cloud-arrow-up'"></i>
+              <span x-text="isSavingUpdateBipih ? 'Menyimpan Update...' : 'Simpan Update BIPIH'"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- KOLOM KANAN (lg:col-span-6): RIWAYAT TRANSAKSI SHEET UPDATEBIPIH         -->
+      <!-- ========================================================================= -->
+      <div class="lg:col-span-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 class="text-xs font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-cyan-400 text-sm"></i>
+            <span>Riwayat Update Status BIPIH</span>
+          </h3>
+
+          <!-- Search Input -->
+          <div class="relative sm:w-48">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <input type="text" x-model="searchUpdateBipihHistory" placeholder="Cari history..."
+              class="w-full pl-8 pr-8 py-1 bg-slate-950 border border-slate-700/80 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400">
+            <button x-show="searchUpdateBipihHistory" @click="searchUpdateBipihHistory = ''"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- History Table -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 shadow-inner">
+          <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+            <thead>
+              <tr class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                <th class="py-3 px-3 border-r border-slate-800 text-center w-10">#</th>
+                <th class="py-3 px-3 border-r border-slate-800 text-amber-400 font-bold">JAMAAH & NO. BPIH</th>
+                <th class="py-3 px-3 border-r border-slate-800 text-cyan-300 font-bold">THN / TGL LUNAS</th>
+                <th class="py-3 px-3 border-r border-slate-800 text-center">SETOR</th>
+                <th class="py-3 px-3 border-r border-slate-800 font-bold text-emerald-300">STATUS PK</th>
+                <th class="py-3 px-3 border-r border-slate-800 text-center">DOK PK</th>
+                <th class="py-3 px-3 text-center w-24">AKSI</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 font-sans">
+              <!-- Empty State -->
+              <template x-if="getFilteredBipihHistoryList().length === 0">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-slate-500 text-xs">
+                    Belum ada riwayat update status BIPIH.
+                  </td>
+                </tr>
+              </template>
+
+              <!-- Table Rows -->
+              <template x-for="(item, idx) in getFilteredBipihHistoryList()" :key="item.idTransaksi || idx">
+                <tr class="hover:bg-slate-800/40 transition-colors">
+                  <td class="py-3 px-3 border-r border-slate-800 text-center text-slate-500 font-mono font-bold"
+                    x-text="idx + 1"></td>
+
+                  <!-- Nama Jamaah & No. BPIH -->
+                  <td class="py-3 px-3 border-r border-slate-800">
+                    <div class="font-bold text-slate-100" x-text="item.namaJamaah"></div>
+                    <div class="text-[10px] text-amber-400 font-mono" x-text="'NoBPIH: ' + item.noBpih"></div>
+                  </td>
+
+                  <!-- Thn Hijriah & Tgl Pelunasan -->
+                  <td class="py-3 px-3 border-r border-slate-800">
+                    <div class="font-mono font-bold text-cyan-300" x-text="item.tahunLunasHijriah"></div>
+                    <div class="text-[10px] text-emerald-400 font-mono" x-text="item.tanggalPelunasan || '-'"></div>
+                  </td>
+
+                  <!-- Bukti Setor Lunas Link -->
+                  <td class="py-3 px-3 border-r border-slate-800 text-center">
+                    <template x-if="isDriveLinkValue(item.buktiSetorLunas)">
+                      <a :href="item.buktiSetorLunas" target="_blank"
+                        class="px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[10px] font-bold inline-flex items-center gap-1">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Bukti</span>
+                      </a>
+                    </template>
+                    <template x-if="!isDriveLinkValue(item.buktiSetorLunas)">
+                      <span class="text-slate-600 text-[10px]">-</span>
+                    </template>
+                  </td>
+
+                  <!-- Status PK & PK 2 -->
+                  <td class="py-3 px-3 border-r border-slate-800 text-[10px]">
+                    <div class="flex items-center gap-1 font-mono">
+                      <span class="text-slate-400">PK1:</span>
+                      <span
+                        class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        x-text="item.statusPk || 'Diajukan'"></span>
+                    </div>
+                    <div class="flex items-center gap-1 font-mono mt-0.5">
+                      <span class="text-slate-400">PK2:</span>
+                      <span
+                        class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                        x-text="item.statusPk2 || 'Diterima'"></span>
+                    </div>
+                  </td>
+
+                  <!-- Upload Dokumen PK Link -->
+                  <td class="py-3 px-3 border-r border-slate-800 text-center">
+                    <template x-if="isDriveLinkValue(item.uploadDokumenPk)">
+                      <a :href="item.uploadDokumenPk" target="_blank"
+                        class="px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold inline-flex items-center gap-1">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <span>Dokumen</span>
+                      </a>
+                    </template>
+                    <template x-if="!isDriveLinkValue(item.uploadDokumenPk)">
+                      <span class="text-slate-600 text-[10px]">-</span>
+                    </template>
+                  </td>
+
+                  <!-- Actions (View, Edit, Delete) -->
+                  <td class="py-3 px-3 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                      <button @click="openBipihDetailModal(item)" title="Lihat Detail"
+                        class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition-all">
+                        <i class="fa-solid fa-eye text-amber-400"></i>
+                      </button>
+                      <button @click="openBipihEditModal(item)" title="Edit Record"
+                        class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition-all">
+                        <i class="fa-solid fa-pen text-cyan-400"></i>
+                      </button>
+                      <button @click="confirmDeleteBipihRecord(item)" title="Hapus Record"
+                        class="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 transition-all">
+                        <i class="fa-solid fa-trash-can"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. MODAL DETAIL RECORD UPDATE BIPIH -->
+  <div x-show="showBipihDetailModal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" x-transition
+    x-cloak>
+    <div @click.away="showBipihDetailModal = false"
+      class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="text-xs font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-file-circle-check text-cyan-400"></i>
+          <span>Detail Record Update BIPIH</span>
+        </h3>
+        <button @click="showBipihDetailModal = false" class="text-slate-400 hover:text-slate-200">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-3 text-xs" x-data="{ item: selectedBipihDetail }">
+        <template x-if="selectedBipihDetail">
+          <div class="space-y-2 divide-y divide-slate-800">
+            <div class="pb-2 flex justify-between">
+              <span class="text-slate-400">ID Transaksi:</span>
+              <span class="font-mono font-bold text-cyan-400" x-text="selectedBipihDetail.idTransaksi"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">No. BPIH:</span>
+              <span class="font-mono font-bold text-amber-300" x-text="selectedBipihDetail.noBpih"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Nama Jamaah:</span>
+              <span class="font-bold text-slate-100" x-text="selectedBipihDetail.namaJamaah"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tahun Lunas Hijriah:</span>
+              <span class="font-mono font-bold text-cyan-300" x-text="selectedBipihDetail.tahunLunasHijriah"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tanggal Pelunasan:</span>
+              <span class="font-mono text-emerald-300" x-text="selectedBipihDetail.tanggalPelunasan || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Harga Paket Haji (USD):</span>
+              <span class="font-mono font-bold text-amber-400" x-text="selectedBipihDetail.hargaPaketHaji ? ('$ ' + new Intl.NumberFormat('id-ID').format(selectedBipihDetail.hargaPaketHaji)) : '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Kurs (Rupiah):</span>
+              <span class="font-mono font-bold text-cyan-300" x-text="selectedBipihDetail.kurs ? ('Rp ' + new Intl.NumberFormat('id-ID').format(selectedBipihDetail.kurs)) : '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tipe Kamar:</span>
+              <span class="font-bold text-slate-200" x-text="selectedBipihDetail.tipeKamar || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Status PK:</span>
+              <span class="font-semibold text-emerald-400" x-text="selectedBipihDetail.statusPk || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tanggal PK:</span>
+              <span class="font-mono text-slate-300" x-text="selectedBipihDetail.tanggalPk || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Status PK 2:</span>
+              <span class="font-semibold text-cyan-400" x-text="selectedBipihDetail.statusPk2 || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tanggal PK 2:</span>
+              <span class="font-mono text-slate-300" x-text="selectedBipihDetail.tanggalPk2 || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Bank:</span>
+              <span class="font-semibold text-slate-300" x-text="selectedBipihDetail.bank || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Nomor Jurnal Sistem:</span>
+              <span class="font-mono text-slate-300" x-text="selectedBipihDetail.noJurnal || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Bank Terima PK:</span>
+              <span class="font-semibold text-slate-300" x-text="selectedBipihDetail.bankTerimaPk || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between items-center">
+              <span class="text-slate-400">Upload Dokumen PK:</span>
+              <template x-if="isDriveLinkValue(selectedBipihDetail.uploadDokumenPk)">
+                <a :href="selectedBipihDetail.uploadDokumenPk" target="_blank"
+                  class="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                  Buka Dokumen PK
+                </a>
+              </template>
+              <template x-if="!isDriveLinkValue(selectedBipihDetail.uploadDokumenPk)">
+                <span class="text-slate-600">-</span>
+              </template>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tgl Nilai Manfaat:</span>
+              <span class="font-mono text-slate-300" x-text="selectedBipihDetail.tglTerimaNilaiManfaat || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Bank Nilai Manfaat:</span>
+              <span class="font-semibold text-slate-300" x-text="selectedBipihDetail.bankNilaiManfaat || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Jml USD (Nilai Manfaat):</span>
+              <span class="font-mono font-bold text-amber-400" x-text="selectedBipihDetail.jumlahUsdNilaiManfaat ? ('$ ' + new Intl.NumberFormat('id-ID').format(selectedBipihDetail.jumlahUsdNilaiManfaat)) : '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Kurs (Nilai Manfaat):</span>
+              <span class="font-mono font-bold text-cyan-300" x-text="selectedBipihDetail.kursNilaiManfaat ? ('Rp ' + new Intl.NumberFormat('id-ID').format(selectedBipihDetail.kursNilaiManfaat)) : '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">No Jurnal Nilai Manfaat:</span>
+              <span class="font-mono text-slate-300" x-text="selectedBipihDetail.noJurnalNilaiManfaat || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Ket. Nilai Manfaat:</span>
+              <span class="text-slate-300" x-text="selectedBipihDetail.ketNilaiManfaat || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Tanggal Tunda:</span>
+              <span class="font-mono text-slate-300" x-text="selectedBipihDetail.tglTunda || '-'"></span>
+            </div>
+            <div class="py-2 flex justify-between items-center">
+              <span class="text-slate-400">Bukti Setor Lunas:</span>
+              <template x-if="isDriveLinkValue(selectedBipihDetail.buktiSetorLunas)">
+                <a :href="selectedBipihDetail.buktiSetorLunas" target="_blank"
+                  class="px-2.5 py-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-[10px] font-bold">
+                  Buka Link Drive
+                </a>
+              </template>
+              <template x-if="!isDriveLinkValue(selectedBipihDetail.buktiSetorLunas)">
+                <span class="text-slate-600">-</span>
+              </template>
+            </div>
+            <div class="py-2 flex justify-between items-center">
+              <span class="text-slate-400">Bukti Transfer Tunda:</span>
+              <template x-if="isDriveLinkValue(selectedBipihDetail.buktiTransferTunda)">
+                <a :href="selectedBipihDetail.buktiTransferTunda" target="_blank"
+                  class="px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                  Buka Link Drive
+                </a>
+              </template>
+              <template x-if="!isDriveLinkValue(selectedBipihDetail.buktiTransferTunda)">
+                <span class="text-slate-600">-</span>
+              </template>
+            </div>
+            <div class="py-2 flex justify-between">
+              <span class="text-slate-400">Petugas User:</span>
+              <span class="font-bold text-slate-300" x-text="selectedBipihDetail.user"></span>
+            </div>
+            <div class="pt-2 flex justify-between">
+              <span class="text-slate-400">Timestamp:</span>
+              <span class="font-mono text-slate-400 text-[11px]" x-text="selectedBipihDetail.timestamp"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="p-4 bg-slate-950 border-t border-slate-800 flex justify-end">
+        <button @click="showBipihDetailModal = false"
+          class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

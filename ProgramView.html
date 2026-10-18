@@ -1,0 +1,719 @@
+<!-- Modul View Program / DashProg (mod_program_view) -->
+<style>
+@keyframes blink-request-btn {
+  0%, 100% {
+    opacity: 1;
+    background-color: rgba(245, 158, 11, 0.4);
+    border-color: #f59e0b;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.9);
+    color: #fef08a;
+    transform: scale(1.04);
+  }
+  50% {
+    opacity: 0.35;
+    background-color: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    transform: scale(0.97);
+  }
+}
+.btn-blink-request {
+  animation: blink-request-btn 0.8s infinite ease-in-out !important;
+}
+
+@keyframes icon-blink {
+  0%, 100% {
+    opacity: 1;
+    color: #f59e0b;
+    transform: scale(1.35);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9));
+  }
+  50% {
+    opacity: 0.15;
+    color: #ef4444;
+    transform: scale(0.85);
+    filter: drop-shadow(0 0 0px transparent);
+  }
+}
+.icon-blink-request {
+  animation: icon-blink 0.6s infinite ease-in-out !important;
+}
+</style>
+<div x-show="currentModule === 'mod_program_view' || currentModule === 'mod_view_program' || currentModule === 'mod_program' || currentModule === 'mod_program_umrah' || isProgramViewModule(currentModule, currentModuleName)" class="space-y-6" x-transition>
+  
+  <!-- Header Banner Dashboard Program -->
+  <div class="relative bg-gradient-to-r from-slate-900 via-emerald-950/70 to-slate-900 border border-slate-800/90 rounded-3xl p-6 sm:p-8 overflow-hidden shadow-2xl">
+    <div class="absolute -right-12 -bottom-12 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute left-1/3 -top-12 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+      <div class="flex items-center gap-4 sm:gap-5">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl sm:text-3xl shadow-inner shrink-0">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-full mb-2 shadow-inner">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Dashboard DashProg Sheet</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
+            Dashboard Program & Penjualan
+          </h2>
+          <p class="text-slate-400 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+            Matrix Informasi Real-time Data Program, Alokasi Tiket, Sisa Seat & Sebaran QTY Jama'ah Per Kanwil.
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons Header -->
+      <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+        <button type="button" 
+                @click="loadProgramDataList(true)" 
+                :disabled="isProgramLoading"
+                class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shadow-sm disabled:opacity-50">
+          <i class="fa-solid fa-rotate text-xs" :class="{'animate-spin': isProgramLoading}"></i>
+          <span>Refresh Data</span>
+        </button>
+
+        <button type="button" 
+                @click="exportProgramToExcel()" 
+                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-file-excel text-xs"></i>
+          <span>Export Excel/CSV</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Controls Bar -->
+  <div class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+    <!-- Search Bar -->
+    <div class="relative w-full md:w-96">
+      <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+      </div>
+      <input type="text" 
+             x-model="programSearchQuery" 
+             placeholder="Cari program, owner, embarkasi, flight, pembimbing..." 
+             class="w-full pl-9 pr-4 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+      <button x-show="programSearchQuery" 
+              @click="programSearchQuery = ''" 
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+
+    <!-- Right Filter Options -->
+    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+      <!-- Filter Tanggal Keberangkatan Lampau -->
+      <label class="flex items-center gap-2 px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 cursor-pointer hover:border-slate-700 transition-all select-none">
+        <input type="checkbox" x-model="showPastProgram" class="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900">
+        <span class="whitespace-nowrap" x-text="showPastProgram ? 'Semua Tanggal' : 'Keberangkatan >= Hari Ini'"></span>
+      </label>
+
+      <!-- Filter Type Paket -->
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-slate-400 font-medium whitespace-nowrap">Tipe Paket:</label>
+        <select x-model="programFilterJenis" 
+                class="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition-all">
+          <option value="">Semua Tipe Paket</option>
+          <template x-for="jenis in Array.from(new Set((programList || []).map(p => p.typePaket || p.jenisPaket).filter(Boolean)))" :key="jenis">
+            <option :value="jenis" x-text="jenis"></option>
+          </template>
+        </select>
+      </div>
+
+      <!-- Counter Badge -->
+      <div class="px-3 py-1.5 bg-slate-800/80 border border-slate-700/80 rounded-xl text-xs text-slate-300 font-mono">
+        <span class="text-emerald-400 font-bold" x-text="filteredProgramList().length"></span> / <span x-text="(programList || []).length"></span> Row
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Overview Summary Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Card 1: Total Program -->
+    <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Program</p>
+          <h4 class="text-2xl font-black text-slate-100 mt-1 font-mono" x-text="(programList || []).length > 0 ? (programList || []).length : '-'">-</h4>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-list-check"></i>
+        </div>
+      </div>
+      <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Tipe Terdaftar</span>
+        <span class="text-cyan-400 font-medium" x-text="Array.from(new Set((programList || []).map(p => p.typePaket))).length + ' Jenis'">0 Jenis</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Total Tiket Tersedia -->
+    <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tiket Tersedia</p>
+          <h4 class="text-2xl font-black text-slate-100 mt-1 font-mono" x-text="formatPaketVal((programList || []).reduce((sum, p) => sum + Number(p.tiketTersedia || 0), 0))">-</h4>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-ticket"></i>
+        </div>
+      </div>
+      <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Total Kuota Flight</span>
+        <span class="text-blue-400 font-medium">Alokasi Seat</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Total QTY Jama'ah -->
+    <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">QTY Jama'ah Total</p>
+          <h4 class="text-2xl font-black text-emerald-400 mt-1 font-mono" x-text="formatPaketVal((programList || []).reduce((sum, p) => sum + Number(p.qtyJamaah || 0), 0))">-</h4>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-users"></i>
+        </div>
+      </div>
+      <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Terisi / Booked</span>
+        <span class="text-emerald-400 font-medium" x-text="((programList || []).reduce((sum, p) => sum + Number(p.tiketTersedia || 0), 0) > 0 ? Math.round(((programList || []).reduce((sum, p) => sum + Number(p.qtyJamaah || 0), 0) / (programList || []).reduce((sum, p) => sum + Number(p.tiketTersedia || 0), 0)) * 100) : 0) + '% Occupancy'">0%</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Total Seat Tersedia -->
+    <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-slate-700 transition-all">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Seat Tersedia (Sisa)</p>
+          <h4 class="text-2xl font-black text-amber-400 mt-1 font-mono" x-text="formatPaketVal((programList || []).reduce((sum, p) => sum + Number(p.seatTersedia || 0), 0))">-</h4>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-chair"></i>
+        </div>
+      </div>
+      <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Sisa Seat Open</span>
+        <span class="text-amber-400 font-medium">Ready Sale</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Matrix Table Card -->
+  <div class="bg-slate-900/90 border border-slate-800/90 rounded-3xl shadow-2xl overflow-hidden relative">
+    
+    <!-- Table Responsive Wrapper -->
+    <div class="overflow-x-auto max-w-full">
+      <table class="w-full text-left border-collapse min-w-[1900px]">
+        <thead>
+          <tr class="bg-slate-950/90 text-slate-300 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-800">
+            <th class="py-3.5 px-3 text-center w-12 sticky left-0 bg-slate-950 z-20 border-r border-slate-800">No</th>
+            <th class="py-3.5 px-4 min-w-[170px]">Schedule Keberangkatan</th>
+            <th class="py-3.5 px-4 min-w-[180px]">Actual Flaight</th>
+            <th class="py-3.5 px-4 min-w-[140px]">Embarkasih</th>
+            <th class="py-3.5 px-4 min-w-[130px]">Owner</th>
+            <th class="py-3.5 px-4 min-w-[150px]">Type Paket</th>
+            <!-- <th class="py-3.5 px-4 min-w-[240px]">Program</th> -->
+            <th class="py-3.5 px-4 text-right min-w-[120px]">Forecast Sale</th>
+            <th class="py-3.5 px-4 text-right min-w-[120px]">Tiket Tersedia</th>
+            <th class="py-3.5 px-4 text-right min-w-[120px] text-emerald-400">QTY Jama'ah</th>
+            <th class="py-3.5 px-4 min-w-[140px]">Pembimbing</th>
+            <!-- Dynamic Middle Headers (Read 100% dynamically from Sheet DashProg) -->
+            <template x-for="(h, hIdx) in (dynamicHeaders && dynamicHeaders.length > 0 ? dynamicHeaders : defaultDynamicHeaders)" :key="hIdx">
+              <th class="py-3.5 px-3 text-right bg-slate-900/50 min-w-[110px] whitespace-nowrap" x-text="h"></th>
+            </template>
+            <th class="py-3.5 px-4 text-right min-w-[130px] font-bold text-emerald-400 bg-emerald-950/20 border-l border-emerald-900/30">QTY Jama'ah Total</th>
+            <th class="py-3.5 px-4 text-right min-w-[120px] font-bold text-amber-400 bg-slate-950 border-l border-amber-900/30 sticky right-[130px] z-20 shadow-[-4px_0_12px_rgba(0,0,0,0.5)]">Seat Tersedia</th>
+            <th class="py-3.5 px-4 text-center min-w-[130px] sticky right-0 bg-slate-950 z-20 border-l border-slate-800">Keterangan</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-xs text-slate-300 font-sans">
+          
+          <!-- Loading State -->
+          <template x-if="isProgramLoading">
+            <tr>
+              <td :colspan="14 + ((dynamicHeaders && dynamicHeaders.length > 0) ? dynamicHeaders.length : 10)" class="py-12 text-center text-slate-400">
+                <div class="flex flex-col items-center justify-center gap-3">
+                  <i class="fa-solid fa-spinner animate-spin text-2xl text-emerald-400"></i>
+                  <span class="text-xs font-medium">Memuat data Dashboard Program (DashProg)...</span>
+                </div>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Empty State -->
+          <template x-if="!isProgramLoading && filteredProgramList().length === 0">
+            <tr>
+              <td :colspan="14 + ((dynamicHeaders && dynamicHeaders.length > 0) ? dynamicHeaders.length : 10)" class="py-12 text-center text-slate-400">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <i class="fa-solid fa-inbox text-3xl text-slate-600"></i>
+                  <p class="text-sm font-semibold text-slate-300">Tidak ada data program ditemukan</p>
+                  <p class="text-xs text-slate-500">Coba ubah kata kunci pencarian atau filter tipe paket.</p>
+                  <button type="button" @click="programSearchQuery = ''; programFilterJenis = ''; loadProgramDataList(true)" class="mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium">
+                    Reset Filter & Refresh
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Row Item Loop -->
+          <template x-for="(prog, index) in filteredProgramList()" :key="prog.idPaket || index">
+            <tr class="hover:bg-slate-800/50 transition-colors group">
+              
+              <!-- 1. No -->
+              <td class="py-3 px-3 text-center text-slate-400 font-mono sticky left-0 bg-slate-900 group-hover:bg-slate-800/90 transition-colors border-r border-slate-800" x-text="formatPaketVal(prog.no || (index + 1))"></td>
+              
+              <!-- 2. Schedule Keberangkatan (Format: dd mmmm yyyy) -->
+              <td class="py-3 px-4 font-mono text-slate-200 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <i class="fa-regular fa-calendar text-emerald-400 text-[11px]"></i>
+                  <span x-text="formatPaketDateIndo(prog.scheduleKeberangkatan)"></span>
+                </div>
+              </td>
+
+              <!-- 3. Actual Flaight (Format: dd mmmm yyyy) -->
+              <td class="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">
+                <span class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[11px]" x-text="formatPaketDateIndo(prog.actualFlight)"></span>
+              </td>
+
+              <!-- 4. Embarkasih -->
+              <td class="py-3 px-4 text-slate-300 whitespace-nowrap">
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-plane-departure text-cyan-400 text-[11px]"></i>
+                  <span x-text="formatPaketVal(prog.embarkasi)"></span>
+                </div>
+              </td>
+
+              <!-- 5. Owner -->
+              <td class="py-3 px-4 text-slate-200 font-medium whitespace-nowrap" x-text="formatPaketVal(prog.owner)"></td>
+
+              <!-- 6. Type Paket (Blinking if Type Paket has RequestSeat) -->
+              <td class="py-3 px-4 whitespace-nowrap">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border inline-flex items-center gap-1.5 select-none"
+                      :class="hasTypePaketRequest(prog)
+                        ? 'btn-blink-request font-bold'
+                        : ((prog.typePaket || '').toLowerCase().includes('reguler')
+                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                            : ((prog.typePaket || '').toLowerCase().includes('vip') || (prog.typePaket || '').toLowerCase().includes('executive')
+                                ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                : 'bg-purple-500/10 text-purple-300 border-purple-500/30'))">
+                  <i class="fa-solid fa-tag text-[9px]" :class="hasTypePaketRequest(prog) ? 'icon-blink-request text-amber-300' : ''"></i>
+                  <span x-text="formatPaketVal(prog.typePaket)"></span>
+                  <template x-if="hasTypePaketRequest(prog)">
+                    <span class="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[9px] font-extrabold rounded-full font-mono shadow-sm" x-text="getTypePaketRequestCount(prog)"></span>
+                  </template>
+                </span>
+              </td>
+
+              <!-- 7. Program (Hidden) -->
+              <!--
+              <td class="py-3 px-4 whitespace-nowrap" :title="prog.program">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border inline-flex items-center gap-1.5 select-none bg-cyan-500/10 text-cyan-300 border-cyan-500/30">
+                  <i class="fa-solid fa-cube text-[9px]"></i>
+                  <span x-text="formatPaketVal(prog.program)"></span>
+                </span>
+              </td>
+              -->
+
+              <!-- 8. Forecast Sale -->
+              <td class="py-3 px-4 text-right font-mono text-slate-300" x-text="formatPaketVal(prog.forecastSale)"></td>
+
+              <!-- 9. Tiket Tersedia -->
+              <td class="py-3 px-4 text-right font-mono font-semibold text-slate-200" x-text="formatPaketVal(prog.tiketTersedia)"></td>
+
+              <!-- 10. QTY Jama'ah (Direct) -->
+              <td class="py-3 px-4 text-right font-mono font-bold text-emerald-400" x-text="formatPaketVal(prog.qtyJamaahDirect || prog.qtyJamaah)"></td>
+
+              <!-- 11. Pembimbing -->
+              <td class="py-3 px-4 text-slate-300 whitespace-nowrap">
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-user-tie text-slate-400 text-[11px]"></i>
+                  <span x-text="formatPaketVal(prog.pembimbing)"></span>
+                </div>
+              </td>
+
+              <!-- Dynamic Middle Cells (Kanwil / Cabang / Sub-Agent Columns read 100% dynamically from Sheet DashProg) -->
+              <template x-for="(dc, dcIdx) in getProgDynamicCols(prog)" :key="dcIdx">
+                <td class="py-3 px-3 text-right font-mono bg-slate-900/40 text-slate-300" x-text="formatPaketVal(dc.val)"></td>
+              </template>
+
+              <!-- 22. QTY Jama'ah Total -->
+              <td class="py-3 px-4 text-right font-mono font-extrabold text-emerald-400 bg-emerald-950/20 border-l border-emerald-900/30" x-text="formatPaketVal(prog.qtyJamaah)"></td>
+
+              <!-- 23. Seat Tersedia (Frozen Sticky Right) -->
+              <td class="py-3 px-4 text-right font-mono font-extrabold bg-slate-900 group-hover:bg-slate-800/90 border-l border-amber-900/30 sticky right-[130px] z-10 shadow-[-4px_0_12px_rgba(0,0,0,0.5)] transition-colors"
+                  :class="Number(prog.seatTersedia || 0) <= 3 && Number(prog.seatTersedia || 0) > 0 ? 'text-rose-400' : 'text-amber-400'"
+                  x-text="formatPaketVal(prog.seatTersedia)">
+              </td>
+
+              <!-- 24. Keterangan & Detail Action (Blinking when Type Paket has RequestSeat) -->
+              <td class="py-3 px-4 text-center sticky right-0 bg-slate-900 group-hover:bg-slate-800/90 transition-colors border-l border-slate-800">
+                <button type="button" 
+                        @click="openProgramDetail(prog)" 
+                        class="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all inline-flex items-center gap-1.5 shadow-sm select-none"
+                        :class="hasTypePaketRequest(prog)
+                          ? 'btn-blink-request font-bold'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'">
+                  <i class="fa-solid fa-circle-info text-[11px]" :class="hasTypePaketRequest(prog) ? 'icon-blink-request text-amber-300' : 'text-cyan-400'"></i>
+                  <span class="tracking-wide font-bold" x-text="hasTypePaketRequest(prog) ? 'Detail (REQ)' : 'Detail'"></span>
+                  <template x-if="hasTypePaketRequest(prog)">
+                    <span class="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[9px] font-extrabold rounded-full font-mono shadow-sm" x-text="getTypePaketRequestCount(prog)"></span>
+                  </template>
+                </button>
+              </td>
+
+            </tr>
+          </template>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Table Footer Meta -->
+    <div class="px-6 py-4 bg-slate-950/90 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>Data terhubung secara dinamis dari Sheet <strong>DashProg</strong> Google Spreadsheet</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button type="button" @click="exportProgramToExcel()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 rounded-xl font-medium transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-file-excel text-xs"></i>
+          <span>Export Excel/CSV</span>
+        </button>
+        <button type="button" @click="loadProgramDataList(true)" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-medium transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate text-xs" :class="{ 'animate-spin': isProgramLoading }"></i>
+          <span>Refresh Table</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DETAIL PROGRAM matrix (Dynamic Breakdown View) -->
+  <div x-show="isProgramDetailOpen" 
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4"
+       style="display: none;">
+    
+    <div @click.away="closeProgramDetail()" 
+         class="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full p-6 text-slate-100 space-y-6 relative overflow-hidden animate-fadeIn">
+      
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" x-text="formatPaketVal(selectedProgram?.typePaket)"></span>
+          </div>
+          <h3 class="text-xl font-bold text-slate-100 mt-1.5" x-text="formatPaketVal(selectedProgram?.program)"></h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Owner: <strong class="text-slate-200" x-text="formatPaketVal(selectedProgram?.owner)"></strong> • Pembimbing: <strong class="text-slate-200" x-text="formatPaketVal(selectedProgram?.pembimbing)"></strong>
+          </p>
+        </div>
+        <button type="button" @click="closeProgramDetail()" class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-all">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Modal Content Matrix -->
+      <div class="space-y-5">
+        
+        <!-- Key Metrics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-xs">
+          <div>
+            <span class="text-slate-500 block">Schedule Keberangkatan</span>
+            <span class="font-mono text-slate-200 font-semibold" x-text="formatPaketDateIndo(selectedProgram?.scheduleKeberangkatan)"></span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Actual Flight</span>
+            <span class="font-mono text-slate-200 font-semibold" x-text="formatPaketDateIndo(selectedProgram?.actualFlight)"></span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Embarkasi</span>
+            <span class="text-slate-200 font-semibold" x-text="formatPaketVal(selectedProgram?.embarkasi)"></span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Forecast Sale</span>
+            <span class="font-mono text-slate-200 font-semibold" x-text="formatPaketVal(selectedProgram?.forecastSale)"></span>
+          </div>
+        </div>
+
+        <!-- Occupancy Seat Status Bar -->
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400 font-medium">Status Seat & Occupancy</span>
+            <span class="text-emerald-400 font-mono font-bold"
+                  x-text="((selectedProgram?.tiketTersedia || 0) > 0 ? (formatPaketVal(selectedProgram?.qtyJamaah) + ' / ' + selectedProgram?.tiketTersedia + ' Seat Terisi') : (formatPaketVal(selectedProgram?.qtyJamaah) + ' Jama\'ah Terisi'))">
+            </span>
+          </div>
+          <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex">
+            <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500"
+                 :style="'width: ' + ((selectedProgram?.tiketTersedia || 0) > 0 ? Math.min(100, Math.round(((selectedProgram?.qtyJamaah || 0) / selectedProgram?.tiketTersedia) * 100)) : (selectedProgram?.qtyJamaah > 0 ? 100 : 0)) + '%'">
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>Tiket Tersedia (Kuota): <strong class="text-slate-200 font-mono" x-text="(selectedProgram?.tiketTersedia || 0) > 0 ? selectedProgram.tiketTersedia : '-'"></strong></span>
+            <span>Sisa Seat: <strong class="font-mono" :class="(selectedProgram?.seatTersedia || 0) < 0 ? 'text-rose-400' : 'text-amber-400'" x-text="formatPaketVal(selectedProgram?.seatTersedia)"></strong></span>
+          </div>
+        </div>
+
+        <!-- Sebaran Per Kanwil Breakdown Grid -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-map-location-dot text-emerald-400"></i>
+            <span>Sebaran QTY Jama'ah Per Kanwil & Cabang</span>
+          </h4>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+            <template x-for="(dc, dcIdx) in getProgDynamicCols(selectedProgram)" :key="dcIdx">
+              <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-center">
+                <span class="text-[10px] text-slate-400 block font-medium truncate" x-text="dc.label"></span>
+                <span class="text-lg font-bold font-mono text-emerald-400 mt-0.5 block" x-text="formatPaketVal(dc.val)">-</span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Keterangan Textbox -->
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-xs">
+          <span class="text-slate-400 font-semibold block mb-1">Catatan / Keterangan:</span>
+          <p class="text-slate-300 italic" x-text="formatPaketVal(selectedProgram?.keterangan)"></p>
+        </div>
+
+        <!-- Riwayat Request Seat Section (Lampiran 1) -->
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-amber-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+              <span>Riwayat Request Seat Paket Ini</span>
+            </h4>
+            <span class="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full text-[11px] font-mono text-amber-300 font-bold"
+                  x-text="(selectedProgramRequestList || []).length + ' Request'"></span>
+          </div>
+
+          <!-- Loading State -->
+          <template x-if="isSelectedProgReqLoading">
+            <div class="py-4 text-center text-slate-400 text-xs">
+              <i class="fa-solid fa-spinner animate-spin text-amber-400 mr-2"></i> Memuat riwayat request...
+            </div>
+          </template>
+
+          <!-- Empty State -->
+          <template x-if="!isSelectedProgReqLoading && (!selectedProgramRequestList || selectedProgramRequestList.length === 0)">
+            <p class="text-xs text-slate-500 italic text-center py-2 bg-slate-950/40 rounded-xl border border-slate-800/60">
+              Belum ada riwayat request seat untuk paket ini.
+            </p>
+          </template>
+
+          <!-- Request Items List -->
+          <template x-if="!isSelectedProgReqLoading && selectedProgramRequestList && selectedProgramRequestList.length > 0">
+            <div class="max-h-48 overflow-y-auto space-y-2 pr-1 text-xs">
+              <template x-for="req in selectedProgramRequestList" :key="req.idRequest">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3 hover:border-amber-500/40 transition-all">
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-amber-400" x-text="req.kanwil"></span>
+                      <span class="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full font-mono text-[10px] font-bold" x-text="req.jumlahSeat + ' Seat'"></span>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                            :class="{
+                              'bg-amber-500/10 text-amber-400 border border-amber-500/30': req.status === 'Pending',
+                              'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30': req.status === 'Approved',
+                              'bg-rose-500/10 text-rose-400 border border-rose-500/30': req.status === 'Rejected'
+                            }" x-text="req.status"></span>
+                    </div>
+                    <p class="text-[11px] text-slate-300" x-text="req.catatan || '-'"></p>
+                    <div class="text-[10px] text-slate-500 flex items-center gap-2">
+                      <span><i class="fa-solid fa-user text-[9px]"></i> <span x-text="req.userRequest"></span></span>
+                      <span>•</span>
+                      <span><i class="fa-solid fa-clock text-[9px]"></i> <span x-text="req.timestamp"></span></span>
+                    </div>
+                  </div>
+
+                  <!-- Tombol Hapus -->
+                  <template x-if="canDeleteRequest(req)">
+                    <button type="button" 
+                            @click="deleteRequestSeat(req.idRequest)" 
+                            class="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-all" 
+                            title="Hapus Pengajuan Ini">
+                      <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
+        <button type="button" @click="openRequestSeatModal(selectedProgram)" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>Request Seat</span>
+        </button>
+
+        <button type="button" @click="closeProgramDetail()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all">
+          Tutup Detail
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL REQUEST SEAT & RIWAYAT PENGAJUAN (Lampiran 2 Format) -->
+  <div x-show="isRequestSeatModalOpen" 
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4"
+       style="display: none;">
+
+    <div @click.away="isRequestSeatModalOpen = false" 
+         class="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden text-slate-100 animate-fadeIn">
+      
+      <!-- Modal Header (Header Amber/Yellow Sesuai Lampiran 2) -->
+      <div class="bg-amber-500 text-slate-950 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-paper-plane text-lg"></i>
+          <h3 class="font-bold text-base tracking-wide">Request Seat & Riwayat Pengajuan</h3>
+        </div>
+        <button type="button" @click="isRequestSeatModalOpen = false" class="text-slate-950 hover:text-slate-800 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body Form -->
+      <div class="p-6 space-y-4 text-xs">
+        
+        <!-- Type Paket (Disabled Input) -->
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Type Paket</label>
+          <input type="text" 
+                 :value="requestSeatForm.typePaket" 
+                 disabled 
+                 class="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-300 text-xs font-medium cursor-not-allowed">
+        </div>
+
+        <!-- Asal Kanwil / Cabang * -->
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Asal Kanwil / Cabang <span class="text-rose-400">*</span></label>
+          <select x-model="requestSeatForm.kanwil" 
+                  class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+            <option value="">-- Pilih Kanwil --</option>
+            <template x-for="k in (kanwilList || [])" :key="k">
+              <option :value="k" x-text="k"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Jumlah Seat * -->
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Jumlah Seat <span class="text-rose-400">*</span></label>
+          <input type="number" 
+                 x-model.number="requestSeatForm.jumlahSeat" 
+                 min="1" 
+                 placeholder="Masukkan jumlah seat..." 
+                 class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
+          <span class="text-[11px] font-mono mt-1 block" :class="Number(selectedProgram?.seatTersedia || 0) < 0 ? 'text-blue-400 font-bold' : 'text-slate-400'">
+            Sisa seat: <span x-text="formatPaketVal(selectedProgram?.seatTersedia)"></span>
+          </span>
+        </div>
+
+        <!-- Catatan Khusus (Opsional) -->
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Catatan Khusus (Opsional)</label>
+          <textarea x-model="requestSeatForm.catatan" 
+                    rows="3" 
+                    placeholder="Contoh: Nama jama'ah, pilihan kamar, request khusus, dll." 
+                    class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all placeholder:text-slate-500"></textarea>
+        </div>
+
+        <hr class="border-slate-800 my-4">
+
+        <!-- Header Riwayat Pengajuan Seat Paket Ini -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-slate-200 font-semibold">
+            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+            <span>Riwayat Pengajuan Seat Paket Ini</span>
+          </div>
+          <span class="px-2.5 py-0.5 bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-mono text-slate-300" x-text="(requestSeatList || []).length + ' Data'"></span>
+        </div>
+
+        <!-- Empty State Riwayat -->
+        <template x-if="!isRequestSeatLoading && (!requestSeatList || requestSeatList.length === 0)">
+          <div class="py-8 text-center text-slate-400 bg-slate-950/50 rounded-2xl border border-slate-800/80">
+            <i class="fa-solid fa-folder-open text-3xl text-slate-600 mb-2"></i>
+            <p class="text-xs text-slate-400">Belum ada riwayat request seat untuk tipe paket ini.</p>
+          </div>
+        </template>
+
+        <!-- List Riwayat Pengajuan -->
+        <template x-if="!isRequestSeatLoading && requestSeatList && requestSeatList.length > 0">
+          <div class="max-h-52 overflow-y-auto space-y-2 pr-1">
+            <template x-for="item in requestSeatList" :key="item.idRequest">
+              <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3 hover:border-slate-700 transition-all">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-amber-400" x-text="item.kanwil"></span>
+                    <span class="px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-full font-mono text-[10px]" x-text="item.jumlahSeat + ' Seat'"></span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                          :class="{
+                            'bg-amber-500/10 text-amber-400 border border-amber-500/30': item.status === 'Pending',
+                            'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30': item.status === 'Approved',
+                            'bg-rose-500/10 text-rose-400 border border-rose-500/30': item.status === 'Rejected'
+                          }" x-text="item.status"></span>
+                  </div>
+                  <p class="text-[11px] text-slate-300" x-text="item.catatan || '-'"></p>
+                  <div class="text-[10px] text-slate-500 flex items-center gap-2">
+                    <span><i class="fa-solid fa-user text-[9px]"></i> <span x-text="item.userRequest"></span></span>
+                    <span>•</span>
+                    <span><i class="fa-solid fa-clock text-[9px]"></i> <span x-text="item.timestamp"></span></span>
+                  </div>
+                </div>
+
+                <!-- Tombol Hapus (Hanya untuk User Pengaju) -->
+                <template x-if="canDeleteRequest(item)">
+                  <button type="button" 
+                          @click="deleteRequestSeat(item.idRequest)" 
+                          class="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-all" 
+                          title="Hapus Pengajuan Ini">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                  </button>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-950 px-6 py-4 border-t border-slate-800 flex items-center justify-between">
+        <button type="button" @click="isRequestSeatModalOpen = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all">
+          Tutup
+        </button>
+
+        <button type="button" 
+                @click="submitRequestSeat()" 
+                :disabled="isSubmittingRequestSeat" 
+                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all inline-flex items-center gap-2 shadow-lg shadow-blue-600/30 disabled:opacity-50">
+          <i class="fa-solid fa-paper-plane" x-show="!isSubmittingRequestSeat"></i>
+          <i class="fa-solid fa-spinner animate-spin" x-show="isSubmittingRequestSeat"></i>
+          <span>Kirim Request</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

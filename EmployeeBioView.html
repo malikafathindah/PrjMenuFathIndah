@@ -1,0 +1,657 @@
+<!-- ============================================================================ -->
+<!-- EMPLOYEE BIO VIEW COMPONENT (EmployeeBioView.html) -->
+<!-- ============================================================================ -->
+<div x-show="currentModule === 'mod_bio_karyawan' || isEmployeeBioModule(currentModule, currentModuleName)" class="space-y-4" x-transition>
+
+          <!-- 3D Header Bar & View Switcher Toolbar -->
+          <div
+            class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3 shadow-lg">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 p-0.5 shadow-md shadow-cyan-500/20 shrink-0">
+                <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-cyan-400">
+                  <i class="fa-solid fa-id-card text-lg"></i>
+                </div>
+              </div>
+              <div>
+                <h2 class="text-base font-extrabold text-slate-100 tracking-tight flex items-center gap-2">
+                  <span>Form Data Karyawan</span>
+                  <span
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-mono">mod_bio_karyawan</span>
+                </h2>
+                <p class="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Cluster 1: Data Pribadi Karyawan | Cluster 2: Alamat Lengkap Karyawan</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Toggle View Mode: Form Entry vs Daftar Karyawan -->
+            <div class="flex items-center gap-2">
+              <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center gap-1">
+                <button @click="bioViewTab = 'form'"
+                  :class="bioViewTab === 'form' ? 'bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/40 shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                  class="px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                  <span>Form Entry</span>
+                </button>
+                <button @click="bioViewTab = 'list'"
+                  :class="bioViewTab === 'list' ? 'bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/40 shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                  class="px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                  <i class="fa-solid fa-users"></i>
+                  <span>Daftar Karyawan</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 1: FORM ENTRY - 2 CLUSTERS -->
+          <div x-show="bioViewTab === 'form'" class="space-y-4" x-transition>
+            <form @submit.prevent="submitBioKaryawanForm()" class="space-y-4">
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                <!-- CLUSTER 1: 👤 1. DATA PRIBADI KARYAWAN -->
+                <div
+                  class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                      <div
+                        class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-sm font-bold shrink-0">
+                        <i class="fa-solid fa-user-tie"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-300">1. Data Pribadi Karyawan
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Informasi identitas dan kontak pribadi karyawan</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div class="sm:col-span-2">
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Karyawan <span
+                            class="text-rose-400">*</span></label>
+                        <input type="text" x-model="bioForm['Nama Karyawan']"
+                          placeholder="Masukkan Nama Lengkap Karyawan" required
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-medium">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Jenis Kelamin</label>
+                        <select x-model="bioForm['Jenis Kelamin']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 focus:outline-none focus:border-cyan-400">
+                          <option value="">-- Pilih Jenis Kelamin --</option>
+                          <option value="Laki-laki">Laki-laki</option>
+                          <option value="Perempuan">Perempuan</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Golongan Darah</label>
+                        <select x-model="bioForm['Golongan Darah']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 focus:outline-none focus:border-cyan-400">
+                          <option value="">-- Pilih Gol. Darah --</option>
+                          <option value="A">A</option>
+                          <option value="B">B</option>
+                          <option value="AB">AB</option>
+                          <option value="O">O</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tempat Lahir</label>
+                        <input type="text" x-model="bioForm['Tempat Lahir']" placeholder="Kota / Kabupaten Lahir"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tanggal Lahir</label>
+                        <input type="date" x-model="bioForm['Tanggal Lahir']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-cyan-300">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nomor Telephone/HP</label>
+                        <input type="text" x-model="bioForm['Nomor Telephone/HP']" placeholder="08123456789"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Email Karyawan</label>
+                        <input type="email" x-model="bioForm['Email']" placeholder="email@perusahaan.com"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CLUSTER 2: 📍 2. ALAMAT LENGKAP KARYAWAN -->
+                <div
+                  class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                      <div
+                        class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-sm font-bold shrink-0">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-300">2. Alamat Lengkap
+                          Karyawan</h3>
+                        <p class="text-[11px] text-slate-400">Domisili tempat tinggal & pencarian otomatis via Kode Pos
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div class="sm:col-span-2">
+                        <label class="block text-slate-300 mb-1 font-semibold">Alamat Rumah Lengkap</label>
+                        <textarea x-model="bioForm['Alamat Rumah Lengkap']" rows="2"
+                          placeholder="Nama Jalan, Blok, Nomor Rumah, RT/RW..."
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 resize-none"></textarea>
+                      </div>
+
+                      <div class="sm:col-span-2 bg-slate-950/70 p-3 rounded-xl border border-cyan-500/30 space-y-1.5">
+                        <label class="block text-cyan-300 font-bold flex items-center justify-between text-xs">
+                          <span>Kode Pos (Auto-Fill Alamat)</span>
+                          <span class="text-[10px] text-cyan-400 font-normal">Ketik 5 Digit Kode Pos</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                          <input type="text" x-model="bioForm['Kode Pos']" @blur="onKodeposChange()"
+                            @keyup.enter="onKodeposChange()" placeholder="Kode Pos (misal: 40111)" maxlength="5"
+                            class="flex-1 px-3 py-2 bg-slate-900 border border-cyan-500/50 rounded-lg text-cyan-300 font-mono font-bold text-sm">
+                          <button type="button" @click="openKodePosModal()"
+                            class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md hover:scale-105 active:scale-95 flex items-center gap-1.5 shrink-0">
+                            <i class="fa-solid fa-magnifying-glass-location text-slate-950"></i>
+                            <span>Cari Kode Pos</span>
+                          </button>
+                        </div>
+                        <p x-show="kodeposMsg" class="text-[11px] font-semibold"
+                          :class="kodeposSuccess ? 'text-emerald-400' : 'text-amber-400'" x-text="kodeposMsg"></p>
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Kelurahan / Desa</label>
+                        <input type="text" x-model="bioForm['Kelurahan/Desa']" placeholder="Kelurahan / Desa"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Kecamatan</label>
+                        <input type="text" x-model="bioForm['Kecamatan']" placeholder="Kecamatan"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Kabupaten / Kota</label>
+                        <input type="text" x-model="bioForm['Kabupaten/Kota']" placeholder="Kabupaten / Kota"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Provinsi</label>
+                        <input type="text" x-model="bioForm['Provinsi']" placeholder="Provinsi"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CLUSTER 3: 🎓 3. RIWAYAT PENDIDIKAN TERAKHIR -->
+                <div
+                  class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                      <div
+                        class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-sm font-bold shrink-0">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-amber-300">3. Riwayat Pendidikan
+                          Terakhir</h3>
+                        <p class="text-[11px] text-slate-400">Jenjang studi, jurusan, dan nama institusi pendidikan</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Pendidikan Terakhir</label>
+                        <select x-model="bioForm['Pendidikan Terakhir']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 focus:outline-none focus:border-amber-400">
+                          <option value="">-- Pilih Pendidikan --</option>
+                          <option value="SD">SD / Sederajat</option>
+                          <option value="SMP">SMP / Sederajat</option>
+                          <option value="SMA/SMK">SMA / SMK / Sederajat</option>
+                          <option value="D3">Diploma 3 (D3)</option>
+                          <option value="S1">Sarjana (S1)</option>
+                          <option value="S2">Magister (S2)</option>
+                          <option value="S3">Doktor (S3)</option>
+                          <option value="Lainnya">Lainnya</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Jurusan Pendidikan Terakhir</label>
+                        <input type="text" x-model="bioForm['Jurusan Pendidikan Terakhir']"
+                          placeholder="Contoh: Teknik Informatika / IPA"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div class="sm:col-span-2">
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Lembaga Pendidikan</label>
+                        <input type="text" x-model="bioForm['Nama Lembaga Pendidikan']"
+                          placeholder="Contoh: Universitas Indonesia / SMKN 1 Bandung"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CLUSTER 4: 👨‍👩‍👧‍👦 4. DATA KELUARGA & TANGGUNGAN -->
+                <div
+                  class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                      <div
+                        class="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-sm font-bold shrink-0">
+                        <i class="fa-solid fa-people-roof"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-rose-300">4. Data Keluarga &
+                          Tanggungan</h3>
+                        <p class="text-[11px] text-slate-400">Informasi orang tua, pasangan, serta anak kandung</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div class="sm:col-span-2">
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Ibu Kandung</label>
+                        <input type="text" x-model="bioForm['Nama Ibu Kandung']" placeholder="Nama Ibu Kandung Karyawan"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Suami / Istri</label>
+                        <input type="text" x-model="bioForm['Nama Suami/Istri']" placeholder="Nama Pasangan (jika ada)"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tgl Lahir Suami / Istri</label>
+                        <input type="date" x-model="bioForm['Tanggal Lahir Suami/Istri']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-rose-300">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Anak Kandung 1</label>
+                        <input type="text" x-model="bioForm['Nama Anak Kandung 1']" placeholder="Nama Anak 1"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tgl Lahir Anak 1</label>
+                        <input type="date" x-model="bioForm['Tanggal Lahir Anak Kandung 1']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-rose-300">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Anak Kandung 2</label>
+                        <input type="text" x-model="bioForm['Nama Anak Kandung 2']" placeholder="Nama Anak 2"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tgl Lahir Anak 2</label>
+                        <input type="date" x-model="bioForm['Tanggal Lahir Anak Kandung 2']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-rose-300">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Anak Kandung 3</label>
+                        <input type="text" x-model="bioForm['Nama Anak Kandung 3']" placeholder="Nama Anak 3"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tgl Lahir Anak 3</label>
+                        <input type="date" x-model="bioForm['Tanggal Lahir Anak Kandung 3']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-rose-300">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Anak Kandung 4</label>
+                        <input type="text" x-model="bioForm['Nama Anak Kandung 4']" placeholder="Nama Anak 4"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Tgl Lahir Anak 4</label>
+                        <input type="date" x-model="bioForm['Tanggal Lahir Anak Kandung 4']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-rose-300">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CLUSTER 5: 🪪 5. DOKUMEN KEPENDUDUKAN & BPJS -->
+                <div
+                  class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                      <div
+                        class="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-sm font-bold shrink-0">
+                        <i class="fa-solid fa-address-card"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">5. Dokumen Kependudukan &
+                          BPJS</h3>
+                        <p class="text-[11px] text-slate-400">Nomor identitas kependudukan, perpajakan, dan jaminan
+                          sosial</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nomor Kartu Keluarga (KK)</label>
+                        <input type="text" x-model="bioForm['Nomor Kartu Keluarga (KK)']" placeholder="16 Digit No. KK"
+                          maxlength="16"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nomor KTP / NIK</label>
+                        <input type="text" x-model="bioForm['Nomor Kartu Tanda Penduduk (KTP)']"
+                          placeholder="16 Digit NIK KTP" maxlength="16"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">NPWP</label>
+                        <input type="text" x-model="bioForm['NPWP']" placeholder="Nomor NPWP Karyawan"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nomor BP Ketenagakerjaan</label>
+                        <input type="text" x-model="bioForm['Nomor BP Ketenagakerjaan']"
+                          placeholder="Nomor BPJS Ketenagakerjaan"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nomor BPJS Kesehatan</label>
+                        <input type="text" x-model="bioForm['Nomor BPJS Kesehatan']" placeholder="Nomor BPJS Kesehatan"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Penanggung BPJS Kesehatan</label>
+                        <select x-model="bioForm['Penanggung BPJS Kesehatan']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                          <option value="">-- Pilih Penanggung --</option>
+                          <option value="Perusahaan">Perusahaan</option>
+                          <option value="Mandiri">Mandiri</option>
+                          <option value="Tanggungan Suami/Istri">Tanggungan Suami / Istri</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CLUSTER 6: 🏦 6. INFORMASI REKENING BANK -->
+                <div
+                  class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-800/80 pb-3">
+                      <div
+                        class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-sm font-bold shrink-0">
+                        <i class="fa-solid fa-building-columns"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-300">6. Informasi Rekening
+                          Bank</h3>
+                        <p class="text-[11px] text-slate-400">Rekening pembayaran gaji & kompensasi karyawan</p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                      <div class="sm:col-span-2">
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Di Bank (Sesuai Buku
+                          Tabungan)</label>
+                        <input type="text" x-model="bioForm['Nama Di Bank']" placeholder="Nama Pemilik Rekening"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">Nama Bank</label>
+                        <select x-model="bioForm['Nama Bank']"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100">
+                          <option value="">-- Pilih Bank --</option>
+                          <option value="BCA">Bank Central Asia (BCA)</option>
+                          <option value="Mandiri">Bank Mandiri</option>
+                          <option value="BNI">Bank Negara Indonesia (BNI)</option>
+                          <option value="BRI">Bank Rakyat Indonesia (BRI)</option>
+                          <option value="CIMB Niaga">CIMB Niaga</option>
+                          <option value="Danamon">Bank Danamon</option>
+                          <option value="Permata">Bank Permata</option>
+                          <option value="Bank Jateng">Bank Jateng</option>
+                          <option value="Bank Jabar">Bank BJB</option>
+                          <option value="Lainnya">Bank Lainnya</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="block text-slate-300 mb-1 font-semibold">No Rekening Bank</label>
+                        <input type="text" x-model="bioForm['No Rekening']" placeholder="Nomor Rekening Bank"
+                          class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 font-mono">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Submit / Reset Bar -->
+              <div
+                class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+                <div class="text-xs text-slate-400 flex items-center gap-2">
+                  <i class="fa-solid fa-circle-info text-cyan-400"></i>
+                  <span>Timestamp diisi otomatis oleh sistem saat data disimpan.</span>
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  <button type="button" @click="resetBioKaryawanForm()"
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition-all border border-slate-700">Reset
+                    Form</button>
+                  <button type="submit"
+                    class="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-lg active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk text-slate-950"></i>
+                    <span>Simpan Data Karyawan</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- TAB 2: DAFTAR KARYAWAN -->
+          <div x-show="bioViewTab === 'list'" class="space-y-4" x-transition x-cloak>
+            <div class="bg-slate-900/90 border border-cyan-500/20 rounded-2xl overflow-hidden shadow-2xl">
+              <div class="p-3 bg-slate-950/80 border-b border-slate-800 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                  <div class="relative w-full sm:w-80">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-cyan-400">
+                      <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </span>
+                    <input type="text" x-model="bioSearch" placeholder="Cari Nama, Kota, HP..."
+                      class="w-full pl-8 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100">
+                  </div>
+                  <button type="button" @click="loadBioKaryawanList(true, true)" :disabled="loading"
+                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 border border-slate-700/80 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 shrink-0 disabled:opacity-50 shadow-sm"
+                    title="Refresh Database Karyawan">
+                    <i class="fa-solid fa-rotate-right" :class="loading ? 'animate-spin' : ''"></i>
+                    <span class="hidden sm:inline">Refresh Database</span>
+                  </button>
+                </div>
+                <span class="text-xs text-slate-400 font-mono shrink-0">Total: <strong class="text-cyan-400"
+                    x-text="filteredBioKaryawanList().length">0</strong> Karyawan</span>
+              </div>
+              <div class="w-full overflow-x-auto max-h-[calc(100vh-230px)] scrollbar-thin">
+                <table class="w-full text-left text-xs border-collapse min-w-[900px]">
+                  <thead
+                    class="sticky top-0 z-20 text-cyan-300 font-bold uppercase tracking-wider bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 border-b border-cyan-500/40 text-[11px]">
+                    <tr>
+                      <th class="py-3 px-3 w-[45px] text-center border-r border-cyan-500/30 whitespace-nowrap">NO</th>
+                      <th class="py-3 px-3 min-w-[200px] border-r border-cyan-500/30 whitespace-nowrap">NAMA KARYAWAN
+                      </th>
+                      <th class="py-3 px-3 w-[120px] min-w-[120px] border-r border-cyan-500/30 whitespace-nowrap">JENIS
+                        KELAMIN</th>
+                      <th class="py-3 px-3 w-[140px] min-w-[140px] border-r border-cyan-500/30 whitespace-nowrap">NO
+                        TELEPHONE/HP</th>
+                      <th class="py-3 px-3 min-w-[180px] border-r border-cyan-500/30 whitespace-nowrap">KOTA & PROVINSI
+                      </th>
+                      <th class="py-3 px-3 w-[150px] min-w-[150px] border-r border-cyan-500/30 whitespace-nowrap">TGL
+                        MULAI TUGAS</th>
+                      <th class="py-3 px-3 w-[150px] min-w-[150px] border-r border-cyan-500/30 whitespace-nowrap">
+                        TANGGAL</th>
+                      <th class="py-3 px-3 w-[130px] min-w-[130px] whitespace-nowrap">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/80 text-slate-300 font-medium text-xs">
+                    <template x-for="(emp, idx) in filteredBioKaryawanList()" :key="emp.id || idx">
+                      <tr class="hover:bg-cyan-950/30 transition-all">
+                        <td
+                          class="py-2.5 px-3 text-center border-r border-slate-800 font-mono text-slate-400 whitespace-nowrap"
+                          x-text="idx + 1"></td>
+                        <td
+                          class="py-2.5 px-3 border-r border-slate-800 font-bold text-slate-100 whitespace-nowrap min-w-[200px]"
+                          x-text="emp['Nama Karyawan'] || '-'"></td>
+                        <td class="py-2.5 px-3 border-r border-slate-800 text-slate-300 whitespace-nowrap"
+                          x-text="emp['Jenis Kelamin'] || '-'"></td>
+                        <td class="py-2.5 px-3 border-r border-slate-800 font-mono text-cyan-300 whitespace-nowrap"
+                          x-text="emp['Nomor Telephone/HP'] || '-'"></td>
+                        <td class="py-2.5 px-3 border-r border-slate-800 text-slate-400 text-[11px] whitespace-nowrap"
+                          x-text="(emp['Kabupaten/Kota'] || '') + (emp['Provinsi'] ? ', ' + emp['Provinsi'] : '') || '-'">
+                        </td>
+                        <!-- TGL MULAI TUGAS (Diambil dari Kolom 40 Sheet Bio Karyawan) -->
+                        <td
+                          class="py-2.5 px-3 text-cyan-300 font-mono text-[11px] whitespace-nowrap border-r border-slate-800"
+                          x-text="formatIndonesianDate(emp._col40 || emp['col40'] || emp['Tgl Mulai Tugas'] || emp['Tgl Tugas'] || emp._col48 || emp['col48'])">
+                        </td>
+                        <!-- Tanggal (Diambil dari Kolom 39 Sheet Bio Karyawan, Format: dd mmmm yyyy, Kosong = "-") -->
+                        <td
+                          class="py-2.5 px-3 text-cyan-300 font-mono text-[11px] whitespace-nowrap border-r border-slate-800"
+                          x-text="formatIndonesianDate(emp._col39 || emp['col39'] || emp['Tanggal'])">
+                        </td>
+                        <!-- STATUS (Diambil dari Kolom 38 Status + STATUSEMP Sheet Bio Karyawan, Format Font Badge Presisi) -->
+                        <td class="py-2.5 px-3 whitespace-nowrap">
+                          <span
+                            :class="getBioStatusBadgeClass(getFormattedBioStatus(emp))"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                            x-text="getFormattedBioStatus(emp)"></span>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL SELEKSI DAFTAR KODE POS -->
+          <div x-show="kodeposModalOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" x-cloak>
+
+            <div
+              class="bg-slate-900 border border-cyan-500/30 rounded-2xl max-w-3xl w-full overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col max-h-[85vh]">
+              <div
+                class="px-5 py-4 bg-gradient-to-r from-slate-950 via-cyan-950/50 to-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 text-base">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                      <span>Cari & Pilih Kode Pos / Alamat</span>
+                      <span
+                        class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Sheet
+                        KodePos</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400">Pilih baris lokasi untuk mengisi otomatis data alamat karyawan
+                    </p>
+                  </div>
+                </div>
+                <button @click="kodeposModalOpen = false"
+                  class="text-slate-400 hover:text-slate-100 text-lg p-1 transition-colors">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              <div
+                class="p-3.5 bg-slate-950/70 border-b border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="relative w-full">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-cyan-400">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                  </span>
+                  <input type="text" x-model="kodeposSearchQuery"
+                    placeholder="Cari berdasarkan Kode Pos atau Kelurahan/Desa..."
+                    class="w-full pl-9 pr-3 py-2 bg-slate-900 border border-cyan-500/40 rounded-xl text-xs text-slate-100 font-medium">
+                </div>
+              </div>
+
+              <div class="overflow-y-auto flex-1 p-3 scrollbar-thin">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead
+                    class="sticky top-0 z-10 text-cyan-300 font-bold uppercase tracking-wider bg-slate-950 border-b border-cyan-500/30 text-[10px]">
+                    <tr>
+                      <th class="py-2.5 px-3 w-[85px] text-center border-r border-slate-800">KODE POS</th>
+                      <th class="py-2.5 px-3 border-r border-slate-800">KELURAHAN / DESA</th>
+                      <th class="py-2.5 px-3 border-r border-slate-800">KECAMATAN</th>
+                      <th class="py-2.5 px-3 border-r border-slate-800">KABUPATEN / KOTA</th>
+                      <th class="py-2.5 px-3 border-r border-slate-800">PROVINSI</th>
+                      <th class="py-2.5 px-3 w-[90px] text-center">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/70 text-slate-300 text-xs font-medium">
+                    <template x-if="filteredKodePosList().length === 0">
+                      <tr>
+                        <td colspan="6" class="py-10 text-center text-slate-500">
+                          <i class="fa-solid fa-folder-open text-2xl mb-1.5 text-slate-600"></i>
+                          <p class="text-xs">Data Kode Pos atau Kelurahan tidak ditemukan.</p>
+                        </td>
+                      </tr>
+                    </template>
+
+                    <template x-for="(item, idx) in filteredKodePosList()" :key="item.id || idx">
+                      <tr @click="selectKodePosItem(item)"
+                        class="hover:bg-cyan-950/40 cursor-pointer transition-colors group">
+                        <td
+                          class="py-2 px-3 text-center font-mono font-bold text-cyan-400 border-r border-slate-800/60 bg-slate-950/40"
+                          x-text="getKodePosValue(item, 'kodepos')"></td>
+                        <td
+                          class="py-2 px-3 border-r border-slate-800/60 font-semibold text-slate-100 group-hover:text-cyan-300"
+                          x-text="getKodePosValue(item, 'kelurahan')"></td>
+                        <td class="py-2 px-3 border-r border-slate-800/60 text-slate-300"
+                          x-text="getKodePosValue(item, 'kecamatan')"></td>
+                        <td class="py-2 px-3 border-r border-slate-800/60 text-slate-300"
+                          x-text="getKodePosValue(item, 'kota')"></td>
+                        <td class="py-2 px-3 border-r border-slate-800/60 text-slate-400 text-[11px]"
+                          x-text="getKodePosValue(item, 'provinsi')"></td>
+                        <td class="py-2 px-2 text-center">
+                          <button type="button" @click.stop="selectKodePosItem(item)"
+                            class="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 rounded-md text-[10px] font-bold transition-all hover:scale-105 active:scale-95">
+                            Pilih
+                          </button>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+
+              <div
+                class="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-[11px] text-slate-400">
+                <span>Menampilkan <strong class="text-cyan-400" x-text="filteredKodePosList().length">0</strong> data
+                  Kodepos</span>
+                <button type="button" @click="kodeposModalOpen = false"
+                  class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-all">Tutup</button>
+              </div>
+            </div>
+          </div>
+        </div>

@@ -1,0 +1,271 @@
+<!-- ============================================================================ -->
+<!-- EMPLOYEE ANALYTICS VIEW COMPONENT (EmployeeAnalyticsView.html) -->
+<!-- ============================================================================ -->
+<div x-show="isEmployeeAnalyticsModule(currentModule, currentModuleName)" class="space-y-4 flex-1 flex flex-col h-full min-h-0 overflow-y-auto pr-1 pb-4" x-transition>
+  
+  <!-- Header Control Toolbar -->
+  <div class="bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+        <i class="fa-solid fa-chart-pie text-lg"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+          <span>Analytics & Demografi Karyawan</span>
+          <span class="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono">Real-time</span>
+        </h2>
+        <p class="text-[11px] text-slate-400">Ringkasan statistik demografi, pendidikan, usia, dan masa kerja karyawan terdaftar</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+      <button @click="loadEmployeeAnalyticsData(true)" :disabled="loading"
+        class="px-3.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold rounded-xl text-xs transition-all shrink-0 active:scale-95 disabled:opacity-50 flex items-center gap-2 shadow-sm"
+        title="Refresh Data Analytics">
+        <i class="fa-solid fa-rotate text-cyan-400" :class="{ 'fa-spin': loading }"></i>
+        <span>Refresh Data</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <template x-if="loading && !employeeAnalyticsData">
+    <div class="p-12 text-center bg-slate-900/80 border border-slate-800 rounded-2xl flex-1 flex flex-col items-center justify-center">
+      <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyan-400 mb-3"></i>
+      <p class="text-xs font-semibold text-slate-300">Menghitung dan memproses statistik demografi karyawan...</p>
+    </div>
+  </template>
+
+  <template x-if="employeeAnalyticsData">
+    <div class="space-y-4">
+      
+      <!-- TOP ROW: 4 KPI SUMMARY STAT CARDS -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        
+        <!-- CARD 1: TOTAL KARYAWAN -->
+        <div class="bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-cyan-950/30 border border-cyan-500/30 rounded-2xl p-4 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] relative overflow-hidden group hover:border-cyan-400/50 transition-all flex flex-col justify-between">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-all"></div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400">Total Karyawan</span>
+            <span class="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 flex items-center justify-center text-xs shadow-[0_0_10px_rgba(34,211,238,0.3)]">
+              <i class="fa-solid fa-users"></i>
+            </span>
+          </div>
+          <div class="text-2xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.totalEmployees || 0">0</div>
+        </div>
+
+        <!-- CARD 2: STATUS KARYAWAN (BACA SHEET RekapDashboard D2: PKWT, E2: PKWTT) -->
+        <div class="bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-emerald-950/30 border border-emerald-500/30 rounded-2xl p-4 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] relative overflow-hidden group hover:border-emerald-400/50 transition-all flex flex-col justify-between">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400">Status Karyawan</span>
+            <span class="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center text-xs shadow-[0_0_10px_rgba(52,211,153,0.3)]">
+              <i class="fa-solid fa-user-check"></i>
+            </span>
+          </div>
+
+          <!-- Format Tampilan Kiri (PKWT - Baris 2 Kolom 4 / D2) dan Kanan (PKWTT - Baris 2 Kolom 5 / E2) -->
+          <div class="grid grid-cols-2 gap-2 mt-1 border-t border-slate-800/80 pt-2">
+            <!-- KIRI: PKWT -->
+            <div class="bg-slate-950/60 rounded-xl p-2 border border-cyan-500/20 text-center">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400 block mb-0.5" x-text="employeeAnalyticsData.pkwtLabel || employeeAnalyticsData.activeLabel || 'PKWT'">PKWT</span>
+              <span class="text-xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.activeCount ?? employeeAnalyticsData.pkwtCount ?? 0">0</span>
+            </div>
+
+            <!-- KANAN: PKWTT -->
+            <div class="bg-slate-950/60 rounded-xl p-2 border border-emerald-500/20 text-center">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 block mb-0.5" x-text="employeeAnalyticsData.pkwttLabel || employeeAnalyticsData.inactiveLabel || 'PKWTT'">PKWTT</span>
+              <span class="text-xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.inactiveCount ?? employeeAnalyticsData.pkwttCount ?? 0">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3: TIPE KARYAWAN (BACA SHEET RekapDashboard J2: AKTIF, K2: NON AKTIF, L2: TOTAL TIPE KARYAWAN) -->
+        <div class="bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-amber-950/30 border border-amber-500/30 rounded-2xl p-4 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] relative overflow-hidden group hover:border-amber-400/50 transition-all flex flex-col justify-between">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-slate-400">Tipe Karyawan</span>
+              <span class="text-sm font-black text-amber-300 font-mono" x-text="employeeAnalyticsData.employeeTypeTotal ?? 0">0</span>
+            </div>
+            <span class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center text-xs shadow-[0_0_10px_rgba(251,191,36,0.3)]">
+              <i class="fa-solid fa-id-card-clip"></i>
+            </span>
+          </div>
+
+          <!-- Format Tampilan Kiri (Non-Aktif - Baris 2 Kolom 11 / K2) dan Kanan (Aktif - Baris 2 Kolom 10 / J2) -->
+          <div class="grid grid-cols-2 gap-2 mt-1 border-t border-slate-800/80 pt-2">
+            <!-- KIRI: NON AKTIF -->
+            <div class="bg-slate-950/60 rounded-xl p-2 border border-slate-700/50 text-center">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-0.5" x-text="employeeAnalyticsData.empTypeInactiveLabel || 'NON-AKTIF'">NON-AKTIF</span>
+              <span class="text-xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.empTypeInactiveCount ?? 0">0</span>
+            </div>
+
+            <!-- KANAN: AKTIF -->
+            <div class="bg-slate-950/60 rounded-xl p-2 border border-amber-500/20 text-center">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block mb-0.5" x-text="employeeAnalyticsData.empTypeActiveLabel || 'AKTIF'">AKTIF</span>
+              <span class="text-xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.empTypeActiveCount ?? 0">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 4: RASIO GENDER (BACA SHEET RekapDashboard G2: LAKI-LAKI, H2: PEREMPUAN) -->
+        <div class="bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-purple-950/30 border border-purple-500/30 rounded-2xl p-4 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] relative overflow-hidden group hover:border-purple-400/50 transition-all flex flex-col justify-between">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"></div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400">Rasio Gender</span>
+            <span class="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 flex items-center justify-center text-xs shadow-[0_0_10px_rgba(192,132,252,0.3)]">
+              <i class="fa-solid fa-venus-mars"></i>
+            </span>
+          </div>
+
+          <!-- Format Tampilan Kiri (LAKI-LAKI - Baris 2 Kolom 7 / G2) dan Kanan (PEREMPUAN - Baris 2 Kolom 8 / H2) -->
+          <div class="grid grid-cols-2 gap-2 mt-1 border-t border-slate-800/80 pt-2">
+            <!-- KIRI: LAKI-LAKI -->
+            <div class="bg-slate-950/60 rounded-xl p-2 border border-cyan-500/20 text-center">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400 block mb-0.5" x-text="employeeAnalyticsData.maleLabel || 'LAKI-LAKI'">LAKI-LAKI</span>
+              <span class="text-xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.maleCount ?? 0">0</span>
+            </div>
+
+            <!-- KANAN: PEREMPUAN -->
+            <div class="bg-slate-950/60 rounded-xl p-2 border border-pink-500/20 text-center">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-pink-400 block mb-0.5" x-text="employeeAnalyticsData.femaleLabel || 'PEREMPUAN'">PEREMPUAN</span>
+              <span class="text-xl font-black text-slate-100 font-mono tracking-tight" x-text="employeeAnalyticsData.femaleCount ?? 0">0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MAIN GRAPHICAL BREAKDOWN GRID (4 CARDS) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- CHART 1: JENJANG PENDIDIKAN -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-graduation-cap text-amber-400 text-sm"></i>
+              <h3 class="text-xs font-bold text-slate-200">Distribusi Jenjang Pendidikan</h3>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono" x-text="(employeeAnalyticsData.educationList || []).length + ' Kategori'"></span>
+          </div>
+
+          <div class="space-y-2.5">
+            <template x-for="item in (employeeAnalyticsData.educationList || [])" :key="item.label">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs font-medium">
+                  <span class="text-slate-300" x-text="item.label"></span>
+                  <div class="flex items-center gap-2 font-mono text-[11px]">
+                    <span class="text-amber-400 font-bold" x-text="item.count + ' Orang'"></span>
+                    <span class="text-slate-500 text-[10px]" x-text="'(' + item.percentage + '%)'"></span>
+                  </div>
+                </div>
+                <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80">
+                  <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+                    :style="'width: ' + item.percentage + '%'"></div>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="!employeeAnalyticsData.educationList || employeeAnalyticsData.educationList.length === 0">
+              <p class="text-xs text-slate-500 italic text-center py-4">Belum ada data pendidikan karyawan.</p>
+            </template>
+          </div>
+        </div>
+
+        <!-- CHART 2: DISTRIBUSI KARYAWAN PER KANTOR / LOKASI -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-building-user text-purple-400 text-sm"></i>
+              <h3 class="text-xs font-bold text-slate-200">Distribusi Karyawan (Kantor / Lokasi)</h3>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono" x-text="(employeeAnalyticsData.topCities || []).length + ' Lokasi'"></span>
+          </div>
+
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1 scrollbar-thin">
+            <template x-for="(city, idx) in (employeeAnalyticsData.topCities || [])" :key="city.name || idx">
+              <div class="bg-slate-950/70 border border-slate-800/90 rounded-xl p-2 flex items-center justify-between">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-5 h-5 rounded-lg bg-purple-500/20 text-purple-400 font-mono text-[10px] font-bold flex items-center justify-center shrink-0" x-text="idx + 1"></span>
+                  <span class="text-xs font-semibold text-slate-200 truncate" x-text="city.name || 'Lainnya'"></span>
+                </div>
+                <span class="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/30 text-[10px] font-mono font-bold" x-text="city.count + ' Karyawan'"></span>
+              </div>
+            </template>
+
+            <template x-if="!employeeAnalyticsData.topCities || employeeAnalyticsData.topCities.length === 0">
+              <p class="text-xs text-slate-500 italic text-center py-4">Belum ada data kantor/lokasi karyawan.</p>
+            </template>
+          </div>
+        </div>
+
+        <!-- CHART 3: MASA KERJA / SENIORITAS (TENURE) -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-user-clock text-cyan-400 text-sm"></i>
+              <h3 class="text-xs font-bold text-slate-200">Masa Kerja & Senioritas</h3>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">Tenure</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <template x-for="item in (employeeAnalyticsData.tenureList || [])" :key="item.label">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs font-medium">
+                  <span class="text-slate-300" x-text="item.label"></span>
+                  <div class="flex items-center gap-2 font-mono text-[11px]">
+                    <span class="text-cyan-400 font-bold" x-text="item.count + ' Orang'"></span>
+                    <span class="text-slate-500 text-[10px]" x-text="'(' + item.percentage + '%)'"></span>
+                  </div>
+                </div>
+                <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80">
+                  <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                    :style="'width: ' + item.percentage + '%'"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- CHART 4: KELOMPOK UMUR / USIA -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-cake-candles text-emerald-400 text-sm"></i>
+              <h3 class="text-xs font-bold text-slate-200">Demografi Kelompok Umur</h3>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">Tahun</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <template x-for="item in (employeeAnalyticsData.ageGroupList || [])" :key="item.label">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs font-medium">
+                  <span class="text-slate-300" x-text="item.label"></span>
+                  <div class="flex items-center gap-2 font-mono text-[11px]">
+                    <span class="text-emerald-400 font-bold" x-text="item.count + ' Orang'"></span>
+                    <span class="text-slate-500 text-[10px]" x-text="'(' + item.percentage + '%)'"></span>
+                  </div>
+                </div>
+                <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80">
+                  <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                    :style="'width: ' + item.percentage + '%'"></div>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="!employeeAnalyticsData.ageGroupList || employeeAnalyticsData.ageGroupList.length === 0">
+              <p class="text-xs text-slate-500 italic text-center py-4">Belum ada data tanggal lahir karyawan.</p>
+            </template>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </template>
+
+</div>

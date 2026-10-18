@@ -1,0 +1,22 @@
+{
+  "name": "prj-menu-fath-indah",
+  "version": "2.0.0",
+  "description": "PT. Fath Indah Enterprise Internal Web Portal - Pure Web App with Dual Database (Google Sheets & Supabase)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "node server.js"
+  },
+  "keywords": [
+    "fath-indah",
+    "internal-portal",
+    "supabase",
+    "google-sheets",
+    "alpinejs",
+    "tailwindcss",
+    "mobile-friendly"
+  ],
+  "author": "PT Fath Indah Tour & Travel",
+  "license": "ISC"
+}

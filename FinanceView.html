@@ -1,0 +1,58 @@
+<div x-show="currentModule === 'mod_finance'" class="space-y-6" x-transition>
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
+    <div>
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-semibold rounded-full mb-2">
+        <i class="fa-solid fa-plug text-[10px]"></i>
+        <span>Modul Terpasang (Plug-and-Play)</span>
+      </div>
+      <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+        <i class="fa-solid fa-wallet text-amber-400"></i>
+        <span>Modul Ringkasan Keuangan</span>
+      </h2>
+      <p class="text-xs text-slate-400 mt-1">Pantau arus kas, pengeluaran operasional, dan transaksi klaim karyawan</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button @click="loadFinanceData()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-all flex items-center gap-2">
+        <i class="fa-solid fa-rotate text-amber-400"></i>
+        <span>Refresh Transaksi</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Finance Data Table -->
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+          <tr>
+            <th class="py-3.5 px-4">No. Transaksi</th>
+            <th class="py-3.5 px-4">Tanggal</th>
+            <th class="py-3.5 px-4">Jenis</th>
+            <th class="py-3.5 px-4">Kategori</th>
+            <th class="py-3.5 px-4">Keterangan</th>
+            <th class="py-3.5 px-4 text-right">Jumlah (IDR)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+          <template x-for="item in financeList" :key="item.transId">
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="py-3.5 px-4 font-mono text-cyan-400" x-text="item.transId"></td>
+              <td class="py-3.5 px-4 text-slate-400" x-text="item.date"></td>
+              <td class="py-3.5 px-4">
+                <span class="px-2.5 py-0.5 rounded text-[11px] font-semibold"
+                  :class="item.type === 'Pemasukan' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'"
+                  x-text="item.type"></span>
+              </td>
+              <td class="py-3.5 px-4 text-slate-300 font-medium" x-text="item.category"></td>
+              <td class="py-3.5 px-4 text-slate-400" x-text="item.description"></td>
+              <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-100"
+                :class="item.type === 'Pemasukan' ? 'text-emerald-400' : 'text-slate-200'"
+                x-text="formatCurrency(item.amount)"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

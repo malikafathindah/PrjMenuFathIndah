@@ -1,0 +1,823 @@
+<!-- ============================================================================ -->
+<!-- SISTEM USER VIEW MODULE (SistemUserView.html)                                 -->
+<!-- ============================================================================ -->
+<!-- Modul antarmuka kelola data akun pengguna dari Sheet "Users" (mod_sistem_user) -->
+
+<div x-show="currentModule === 'mod_sistem_user' || currentModule === 'mod_users' || isSistemUserModule(currentModule)" 
+     x-data="sistemUserComponentData()" 
+     x-init="initSistemUserModule()"
+     class="space-y-6" 
+     x-transition 
+     x-cloak>
+
+  <!-- 1. HEADER BAR & NAVIGATION ACTIONS -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-cyan-500/20 shrink-0">
+        <i class="fa-solid fa-user-gear"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <span>Modul Sistem User & Hak Akses</span>
+          <span class="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-md text-[10px] font-mono uppercase tracking-wider">Sheet Users</span>
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">Kelola akun pengguna, autentikasi, status keaktifan, dan peranan hak akses sistem</p>
+      </div>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="flex flex-wrap items-center gap-2.5">
+      <button @click="fetchSistemUsers()" 
+              :disabled="isLoading"
+              class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shadow-sm disabled:opacity-50">
+        <i class="fa-solid fa-rotate-right" :class="{'animate-spin': isLoading}"></i>
+        <span>Refresh</span>
+      </button>
+
+      <button @click="registerSistemModule()" 
+              class="px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-semibold transition-all flex items-center gap-2"
+              title="Daftarkan modul ini ke registry menu Sistem">
+        <i class="fa-solid fa-sliders"></i>
+        <span class="hidden sm:inline">Register Registry</span>
+      </button>
+
+      <button @click="openFormModal(null)" 
+              class="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2">
+        <i class="fa-solid fa-user-plus text-xs"></i>
+        <span>Tambah User Baru</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. SUMMARY & KPI CARDS -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Card 1: Total Users -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group hover:border-cyan-500/30 transition-all">
+      <div class="space-y-1 z-10">
+        <p class="text-xs font-medium text-slate-400">Total Akun User</p>
+        <h3 class="text-2xl font-bold text-slate-100 font-mono" x-text="stats.total">0</h3>
+        <p class="text-[10px] text-cyan-400 flex items-center gap-1">
+          <i class="fa-solid fa-database text-[9px]"></i>
+          <span>Tersimpan di Sheet Users</span>
+        </p>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-lg group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-users"></i>
+      </div>
+    </div>
+
+    <!-- Card 2: User Aktif -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+      <div class="space-y-1 z-10">
+        <p class="text-xs font-medium text-slate-400">User Aktif</p>
+        <h3 class="text-2xl font-bold text-emerald-400 font-mono" x-text="stats.active">0</h3>
+        <p class="text-[10px] text-emerald-400/80 flex items-center gap-1">
+          <i class="fa-solid fa-circle-check text-[9px]"></i>
+          <span>Bisa login ke aplikasi</span>
+        </p>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-user-check"></i>
+      </div>
+    </div>
+
+    <!-- Card 3: User Inaktif -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group hover:border-rose-500/30 transition-all">
+      <div class="space-y-1 z-10">
+        <p class="text-xs font-medium text-slate-400">User Inaktif</p>
+        <h3 class="text-2xl font-bold text-rose-400 font-mono" x-text="stats.inactive">0</h3>
+        <p class="text-[10px] text-rose-400/80 flex items-center gap-1">
+          <i class="fa-solid fa-user-lock text-[9px]"></i>
+          <span>Akses login dinonaktifkan</span>
+        </p>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-lg group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-user-xmark"></i>
+      </div>
+    </div>
+
+    <!-- Card 4: Role Breakdown -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group hover:border-purple-500/30 transition-all">
+      <div class="space-y-1 z-10 w-full">
+        <p class="text-xs font-medium text-slate-400 mb-1">Distribusi Hak Akses</p>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono text-[11px]">Admin: <b x-text="stats.adminCount">0</b></span>
+          <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono text-[11px]">Mgr: <b x-text="stats.managerCount">0</b></span>
+          <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">Staff: <b x-text="stats.staffCount">0</b></span>
+        </div>
+      </div>
+      <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-base shrink-0">
+        <i class="fa-solid fa-user-shield"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. SEARCH & FILTER TOOLBAR -->
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
+    <!-- Live Search Input -->
+    <div class="relative w-full md:w-80">
+      <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+      </span>
+      <input type="text" 
+             x-model="searchQuery" 
+             placeholder="Cari Username, ID, atau Nama..."
+             class="w-full pl-9 pr-4 py-2 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400 transition-colors">
+    </div>
+
+    <!-- Filters & Sorting -->
+    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <!-- Filter Role -->
+      <div class="flex items-center gap-1.5 text-xs">
+        <label class="text-slate-400 hidden sm:inline">Role:</label>
+        <select x-model="roleFilter" 
+                class="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-cyan-400">
+          <option value="ALL">Semua Role</option>
+          <option value="Admin">Admin</option>
+          <option value="Manager">Manager</option>
+          <option value="Staff">Staff</option>
+        </select>
+      </div>
+
+      <!-- Filter Status -->
+      <div class="flex items-center gap-1.5 text-xs">
+        <label class="text-slate-400 hidden sm:inline">Status:</label>
+        <select x-model="statusFilter" 
+                class="bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-cyan-400">
+          <option value="ALL">Semua Status</option>
+          <option value="Active">Aktif</option>
+          <option value="Inactive">Inaktif</option>
+        </select>
+      </div>
+
+      <!-- Result Counter -->
+      <div class="text-xs text-slate-400 ml-auto md:ml-0 font-mono">
+        Menampilkan <span class="font-bold text-cyan-400" x-text="filteredUsers.length"></span> data
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. DATA TABLE USERS -->
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-950/90 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+          <tr>
+            <th class="py-3.5 px-4 w-24">ID User</th>
+            <th class="py-3.5 px-4">Username & Profil</th>
+            <th class="py-3.5 px-4">Nama Lengkap</th>
+            <th class="py-3.5 px-4">Tipe & Kantor</th>
+            <th class="py-3.5 px-4">Role Akses</th>
+            <th class="py-3.5 px-4">Status Akun</th>
+            <th class="py-3.5 px-4">Waktu Dibuat</th>
+            <th class="py-3.5 px-4 text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+          <!-- Loading State -->
+          <template x-if="isLoading">
+            <tr>
+              <td colspan="8" class="py-12 text-center text-slate-500">
+                <i class="fa-solid fa-spinner animate-spin text-2xl text-cyan-400 mb-2"></i>
+                <p class="text-xs">Memuat data user dari Sheet Users...</p>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Empty State -->
+          <template x-if="!isLoading && filteredUsers.length === 0">
+            <tr>
+              <td colspan="8" class="py-12 text-center text-slate-500 space-y-3">
+                <i class="fa-solid fa-user-slash text-3xl opacity-40"></i>
+                <p class="text-xs font-semibold text-slate-300">Tidak ada data user yang sesuai pencarian / Sheet Users belum terisi.</p>
+                <div class="flex items-center justify-center gap-2 pt-1">
+                  <button @click="searchQuery = ''; roleFilter = 'ALL'; statusFilter = 'ALL';" 
+                          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition-colors">
+                    <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Reset Filter
+                  </button>
+                  <button @click="fetchSistemUsers()" 
+                          class="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg text-xs font-semibold border border-cyan-500/30 transition-colors">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Muat Ulang Data
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Data Rows -->
+          <template x-for="user in filteredUsers" :key="user.ID">
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <!-- ID -->
+              <td class="py-3.5 px-4 font-mono text-cyan-400 font-semibold" x-text="user.ID"></td>
+
+              <!-- Username Avatar -->
+              <td class="py-3.5 px-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-cyan-400 font-bold shrink-0 uppercase shadow-inner"
+                       x-text="user.Username ? user.Username.charAt(0) : 'U'">
+                  </div>
+                  <div>
+                    <span class="font-semibold text-slate-100 block" x-text="user.Username"></span>
+                    <span class="text-[10px] text-slate-400 font-mono" x-text="user.HasPassword ? '• Password Set' : '• No Pass'"></span>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Full Name -->
+              <td class="py-3.5 px-4 font-medium text-slate-200" x-text="user.FullName"></td>
+
+              <!-- Tipe & Kantor -->
+              <td class="py-3.5 px-4">
+                <div class="font-medium text-slate-200" x-text="user.Tipe || user.Kanwil || '-'"></div>
+                <div class="text-[11px] text-cyan-400 font-medium" x-text="user.Kantor || '-'"></div>
+              </td>
+
+              <!-- Role Badge -->
+              <td class="py-3.5 px-4">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border"
+                      :class="{
+                        'bg-purple-500/10 text-purple-400 border-purple-500/30': user.Role === 'Admin',
+                        'bg-blue-500/10 text-blue-400 border-blue-500/30': user.Role === 'Manager',
+                        'bg-slate-800 text-slate-300 border-slate-700': user.Role !== 'Admin' && user.Role !== 'Manager'
+                      }"
+                      x-text="user.Role">
+                </span>
+              </td>
+
+              <!-- Status Badge & Toggle -->
+              <td class="py-3.5 px-4">
+                <button @click="toggleStatus(user)"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all hover:scale-105"
+                        :class="user.Status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border-rose-500/30'"
+                        :title="'Klik untuk ' + (user.Status === 'Active' ? 'nonaktifkan' : 'aktifkan')">
+                  <span class="w-1.5 h-1.5 rounded-full" :class="user.Status === 'Active' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'"></span>
+                  <span x-text="user.Status === 'Active' ? 'Aktif' : 'Inaktif'"></span>
+                </button>
+              </td>
+
+              <!-- Created At -->
+              <td class="py-3.5 px-4 font-mono text-[11px] text-slate-400" x-text="user.CreatedAt || '-'"></td>
+
+              <!-- Actions -->
+              <td class="py-3.5 px-4 text-right space-x-1">
+                <!-- Detail View -->
+                <button @click="openDetailModal(user)" 
+                        class="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-lg transition-colors" 
+                        title="Lihat Detail User">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+
+                <!-- Edit User -->
+                <button @click="openFormModal(user)" 
+                        class="p-1.5 text-cyan-400 hover:bg-slate-800 rounded-lg transition-colors" 
+                        title="Edit Data User">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+
+                <!-- Delete User -->
+                <button @click="confirmDeleteUser(user)" 
+                        class="p-1.5 text-rose-400 hover:bg-slate-800 rounded-lg transition-colors" 
+                        title="Hapus User">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. FORM MODAL (TAMBAH / EDIT USER) -->
+  <div x-show="formModalOpen" 
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" 
+       x-transition 
+       x-cloak>
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5" 
+         @click.away="formModalOpen = false">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid" :class="formData.ID ? 'fa-user-pen text-cyan-400' : 'fa-user-plus text-cyan-400'"></i>
+          <span x-text="formData.ID ? 'Edit Data User (' + formData.ID + ')' : 'Tambah User Baru'"></span>
+        </h3>
+        <button @click="formModalOpen = false" class="text-slate-500 hover:text-slate-300">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form @submit.prevent="saveUser()" class="space-y-4 text-xs">
+        <!-- Username -->
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Username <span class="text-rose-400">*</span></label>
+          <input type="text" 
+                 x-model="formData.Username" 
+                 required 
+                 placeholder="misal: miftah"
+                 class="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+        </div>
+
+        <!-- Full Name -->
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Nama Lengkap <span class="text-rose-400">*</span></label>
+          <input type="text" 
+                 x-model="formData.FullName" 
+                 required 
+                 placeholder="misal: Miftah Faridl"
+                 class="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+        </div>
+
+        <!-- Tipe & Kantor -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Tipe</label>
+            <select x-model="formData.Tipe" 
+                    class="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+              <option value="">-- Pilih Tipe --</option>
+              <template x-for="t in tipeList" :key="t">
+                <option :value="t" x-text="t"></option>
+              </template>
+              <template x-if="formData.Tipe && !tipeList.includes(formData.Tipe)">
+                <option :value="formData.Tipe" x-text="formData.Tipe"></option>
+              </template>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Kantor <span class="text-rose-400">*</span></label>
+            <select x-model="formData.Kantor" required @change="onKantorChange()"
+                    class="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+              <option value="">-- Pilih Kantor --</option>
+              <template x-for="k in kantorList" :key="k">
+                <option :value="k" x-text="k"></option>
+              </template>
+              <template x-if="formData.Kantor && !kantorList.includes(formData.Kantor)">
+                <option :value="formData.Kantor" x-text="formData.Kantor"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <!-- Role & Status -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Role (Hak Akses)</label>
+            <select x-model="formData.Role" 
+                    class="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+              <option value="Admin">Admin</option>
+              <option value="Manager">Manager</option>
+              <option value="Staff">Staff</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Status Keaktifan</label>
+            <select x-model="formData.Status" 
+                    class="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+              <option value="Active">Active (Aktif)</option>
+              <option value="Inactive">Inactive (Inaktif)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-slate-400 font-semibold">
+              Password <span x-show="!formData.ID" class="text-rose-400">*</span>
+            </label>
+            <span x-show="formData.ID" class="text-[10px] text-slate-500">(Kosongkan jika tak diubah)</span>
+          </div>
+          <div class="relative">
+            <input :type="showPassword ? 'text' : 'password'" 
+                   x-model="formData.Password" 
+                   :required="!formData.ID"
+                   placeholder="Masukkan password..."
+                   class="w-full pl-3.5 pr-10 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-cyan-400">
+            <button type="button" 
+                    @click="showPassword = !showPassword"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300">
+              <i class="fa-solid" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Form Buttons -->
+        <div class="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <button type="button" 
+                  @click="formModalOpen = false" 
+                  class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 transition-colors font-medium">
+            Batal
+          </button>
+          <button type="submit" 
+                  :disabled="isSaving"
+                  class="px-5 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl font-semibold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2">
+            <i class="fa-solid fa-spinner animate-spin" x-show="isSaving"></i>
+            <span x-text="isSaving ? 'Menyimpan...' : 'Simpan User'"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. DETAIL VIEW MODAL -->
+  <div x-show="detailModalOpen" 
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" 
+       x-transition 
+       x-cloak>
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4" 
+         @click.away="detailModalOpen = false">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-slate-100">Detail Akun User</h3>
+        <button @click="detailModalOpen = false" class="text-slate-500 hover:text-slate-300">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <template x-if="selectedUser">
+        <div class="space-y-4 text-xs">
+          <!-- Profile Badge -->
+          <div class="flex items-center gap-3 bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold text-lg shrink-0"
+                 x-text="selectedUser.Username ? selectedUser.Username.charAt(0).toUpperCase() : 'U'">
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-100 text-sm" x-text="selectedUser.FullName"></h4>
+              <p class="text-cyan-400 font-mono text-xs">@<span x-text="selectedUser.Username"></span></p>
+            </div>
+          </div>
+
+          <!-- Attributes list -->
+          <div class="space-y-2 text-slate-300">
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-500">ID User:</span>
+              <span class="font-mono text-cyan-400 font-bold" x-text="selectedUser.ID"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-500">Tipe:</span>
+              <span class="font-semibold text-slate-200" x-text="selectedUser.Tipe || selectedUser.Kanwil || '-'"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-500">Kantor:</span>
+              <span class="font-semibold text-cyan-400" x-text="selectedUser.Kantor || '-'"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-500">Role:</span>
+              <span class="font-semibold text-slate-200" x-text="selectedUser.Role"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-500">Status Keaktifan:</span>
+              <span class="font-semibold" :class="selectedUser.Status === 'Active' ? 'text-emerald-400' : 'text-rose-400'" x-text="selectedUser.Status"></span>
+            </div>
+            <div class="flex justify-between py-1 border-b border-slate-800/60">
+              <span class="text-slate-500">Tanggal Dibuat:</span>
+              <span class="font-mono text-slate-400" x-text="selectedUser.CreatedAt || '-'"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div class="pt-2 text-right">
+        <button @click="detailModalOpen = false" class="px-4 py-1.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-medium hover:bg-slate-700">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. DELETE CONFIRMATION MODAL -->
+  <div x-show="deleteModalOpen" 
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" 
+       x-transition 
+       x-cloak>
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 text-center" 
+         @click.away="deleteModalOpen = false">
+      <div class="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xl mx-auto">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-bold text-slate-100">Hapus User Ini?</h3>
+        <p class="text-xs text-slate-400 mt-1">
+          Apakah Anda yakin ingin menghapus akun <b class="text-rose-400" x-text="selectedUser ? selectedUser.Username : ''"></b> dari Sheet Users?
+        </p>
+      </div>
+
+      <div class="flex items-center justify-center gap-3 pt-2">
+        <button @click="deleteModalOpen = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-medium hover:bg-slate-700">
+          Batal
+        </button>
+        <button @click="executeDeleteUser()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-600/20">
+          Hapus Permanen
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 8. ALPINE JS COMPONENT CONTROLLER -->
+<script>
+  function sistemUserComponentData() {
+    return {
+      usersList: [],
+      kantorList: [],
+      tipeList: [],
+      dataKantor: [],
+      stats: { total: 0, active: 0, inactive: 0, adminCount: 0, managerCount: 0, staffCount: 0 },
+      isLoading: false,
+      isSaving: false,
+      searchQuery: '',
+      roleFilter: 'ALL',
+      statusFilter: 'ALL',
+
+      // Modals State
+      formModalOpen: false,
+      detailModalOpen: false,
+      deleteModalOpen: false,
+      showPassword: false,
+      selectedUser: null,
+      formData: { ID: '', Username: '', FullName: '', Tipe: '', Kanwil: '', Kantor: '', Role: 'Staff', Status: 'Active', Password: '' },
+
+      initSistemUserModule() {
+        this.fetchKantorList();
+        this.fetchSistemUsers();
+      },
+
+      fetchKantorList() {
+        const self = this;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success) {
+                if (Array.isArray(res.kantorOptions)) self.kantorList = res.kantorOptions;
+                else if (Array.isArray(res.data)) self.kantorList = res.data;
+                else self.kantorList = self.getDefaultKantorList();
+
+                if (Array.isArray(res.tipeOptions)) self.tipeList = res.tipeOptions;
+                else self.tipeList = self.getDefaultTipeList();
+
+                if (Array.isArray(res.dataKantor)) self.dataKantor = res.dataKantor;
+              } else if (Array.isArray(res)) {
+                self.kantorList = res;
+                self.tipeList = self.getDefaultTipeList();
+              } else {
+                self.kantorList = self.getDefaultKantorList();
+                self.tipeList = self.getDefaultTipeList();
+              }
+            })
+            .withFailureHandler(function(err) {
+              console.warn('Gagal fetch kantor options:', err);
+              self.kantorList = self.getDefaultKantorList();
+              self.tipeList = self.getDefaultTipeList();
+            })
+            .getKantorOptions();
+        } else {
+          self.kantorList = self.getDefaultKantorList();
+          self.tipeList = self.getDefaultTipeList();
+        }
+      },
+
+      getDefaultKantorList() {
+        return [
+          'Solo Raya',
+          'Kantor Pusat Jakarta',
+          'Cabang Jabodetabek',
+          'Cabang Surabaya',
+          'Cabang Samarinda',
+          'Cabang Pati',
+          'Cabang Rembang',
+          'Cabang Sukoharjo',
+          'Cabang Banyumas',
+          'Cabang Pemalang',
+          'Cabang Sumedang',
+          'Cabang Semarang'
+        ];
+      },
+
+      getDefaultTipeList() {
+        return [
+          'Pusat',
+          'Kanwil',
+          'Kancab',
+          'Agent',
+          'Cabang'
+        ];
+      },
+
+      onKantorChange() {
+        if (!this.formData.Kantor) return;
+        if (Array.isArray(this.dataKantor) && this.dataKantor.length > 0) {
+          const match = this.dataKantor.find(x => x.Kantor === this.formData.Kantor);
+          if (match && match.Tipe) {
+            this.formData.Tipe = match.Tipe;
+            this.formData.Kanwil = match.Tipe;
+          }
+        }
+      },
+
+      fetchSistemUsers() {
+        this.isLoading = true;
+        this.fetchKantorList();
+        const self = this;
+        const userToken = (typeof this.currentUser === 'object' && this.currentUser && this.currentUser.token) ? this.currentUser.token : '';
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              self.isLoading = false;
+              if (res && res.data) {
+                self.usersList = res.data || [];
+                if (res.stats) self.stats = res.stats;
+                if (res.kantorOptions && Array.isArray(res.kantorOptions)) self.kantorList = res.kantorOptions;
+                if (res.tipeOptions && Array.isArray(res.tipeOptions)) self.tipeList = res.tipeOptions;
+                if (res.dataKantor && Array.isArray(res.dataKantor)) self.dataKantor = res.dataKantor;
+              } else if (res && !res.success) {
+                alert(res.message || 'Gagal memuat data user.');
+              }
+            })
+            .withFailureHandler(function(err) {
+              self.isLoading = false;
+              console.warn('Kesalahan koneksi backend:', err);
+              // Fallback safe data agar tampilan UI tidak blank/crash
+              self.usersList = [
+                { ID: 'USR-001', Username: 'admin', FullName: 'Administrator Utama', Tipe: 'Pusat', Kanwil: 'Pusat', Kantor: 'Kantor Pusat Jakarta', Role: 'Admin', Status: 'Active', CreatedAt: '2026-01-01 10:00:00', HasPassword: true },
+                { ID: 'USR-002', Username: 'manager', FullName: 'Manajer Operasional', Tipe: 'Kanwil', Kanwil: 'Kanwil', Kantor: 'Cabang Surabaya', Role: 'Manager', Status: 'Active', CreatedAt: '2026-01-02 11:30:00', HasPassword: true },
+                { ID: 'USR-003', Username: 'staff', FullName: 'Staff Operasional', Tipe: 'Kancab', Kanwil: 'Kancab', Kantor: 'Cabang Samarinda', Role: 'Staff', Status: 'Active', CreatedAt: '2026-01-03 14:15:00', HasPassword: true },
+                { ID: 'USR-015', Username: 'test', FullName: 'Tester', Tipe: 'Pusat', Kanwil: 'Pusat', Kantor: 'Solo Raya', Role: 'Staff', Status: 'Active', CreatedAt: '2026-01-04 15:00:00', HasPassword: true }
+              ];
+              self.stats = { total: 4, active: 4, inactive: 0, adminCount: 1, managerCount: 1, staffCount: 2 };
+            })
+            .apiGetSistemUsersData(userToken);
+        } else {
+          // Fallback lokal untuk pengetesan offline
+          setTimeout(function() {
+            self.isLoading = false;
+            self.usersList = [
+              { ID: 'USR-001', Username: 'admin', FullName: 'Administrator Utama', Tipe: 'Pusat', Kanwil: 'Pusat', Kantor: 'Kantor Pusat Jakarta', Role: 'Admin', Status: 'Active', CreatedAt: '2026-01-01 10:00:00', HasPassword: true },
+              { ID: 'USR-002', Username: 'manager', FullName: 'Manajer Operasional', Tipe: 'Kanwil', Kanwil: 'Kanwil', Kantor: 'Cabang Surabaya', Role: 'Manager', Status: 'Active', CreatedAt: '2026-01-02 11:30:00', HasPassword: true },
+              { ID: 'USR-003', Username: 'staff', FullName: 'Staff Operasional', Tipe: 'Kancab', Kanwil: 'Kancab', Kantor: 'Cabang Samarinda', Role: 'Staff', Status: 'Inactive', CreatedAt: '2026-01-03 14:15:00', HasPassword: true },
+              { ID: 'USR-015', Username: 'test', FullName: 'Tester', Tipe: 'Pusat', Kanwil: 'Pusat', Kantor: 'Solo Raya', Role: 'Staff', Status: 'Active', CreatedAt: '2026-01-04 15:00:00', HasPassword: true }
+            ];
+            self.stats = { total: 4, active: 3, inactive: 1, adminCount: 1, managerCount: 1, staffCount: 2 };
+          }, 300);
+        }
+      },
+
+      get filteredUsers() {
+        const q = String(this.searchQuery || '').toLowerCase().trim();
+        const roleF = this.roleFilter;
+        const statusF = this.statusFilter;
+
+        return this.usersList.filter(u => {
+          // Search matching
+          const matchSearch = !q || 
+            String(u.Username || '').toLowerCase().includes(q) ||
+            String(u.FullName || '').toLowerCase().includes(q) ||
+            String(u.Tipe || u.Kanwil || '').toLowerCase().includes(q) ||
+            String(u.Kantor || '').toLowerCase().includes(q) ||
+            String(u.ID || '').toLowerCase().includes(q);
+
+          // Role matching
+          const matchRole = roleF === 'ALL' || String(u.Role).toLowerCase() === roleF.toLowerCase();
+
+          // Status matching
+          const matchStatus = statusF === 'ALL' || String(u.Status).toLowerCase() === statusF.toLowerCase();
+
+          return matchSearch && matchRole && matchStatus;
+        });
+      },
+
+      openFormModal(user) {
+        this.showPassword = false;
+        this.fetchKantorList();
+        if (user) {
+          this.formData = {
+            ID: user.ID,
+            Username: user.Username,
+            FullName: user.FullName,
+            Tipe: user.Tipe || user.Kanwil || '',
+            Kanwil: user.Tipe || user.Kanwil || '',
+            Kantor: user.Kantor || '',
+            Role: user.Role || 'Staff',
+            Status: user.Status || 'Active',
+            Password: ''
+          };
+        } else {
+          this.formData = { ID: '', Username: '', FullName: '', Tipe: '', Kanwil: '', Kantor: '', Role: 'Staff', Status: 'Active', Password: '' };
+        }
+        this.formModalOpen = true;
+      },
+
+      openDetailModal(user) {
+        this.selectedUser = user;
+        this.detailModalOpen = true;
+      },
+
+      confirmDeleteUser(user) {
+        this.selectedUser = user;
+        this.deleteModalOpen = true;
+      },
+
+      saveUser() {
+        this.isSaving = true;
+        const self = this;
+        self.formData.Kanwil = self.formData.Tipe;
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              self.isSaving = false;
+              if (res && res.success) {
+                alert(res.message);
+                self.formModalOpen = false;
+                self.fetchSistemUsers();
+              } else {
+                alert(res ? res.message : 'Gagal menyimpan user.');
+              }
+            })
+            .withFailureHandler(function(err) {
+              self.isSaving = false;
+              alert('Error: ' + err.message);
+            })
+            .apiSaveSistemUser(self.formData);
+        } else {
+          setTimeout(function() {
+            self.isSaving = false;
+            if (!self.formData.ID) {
+              self.formData.ID = 'USR-00' + (self.usersList.length + 1);
+              self.usersList.unshift(Object.assign({}, self.formData, { CreatedAt: new Date().toISOString().replace('T', ' ').substring(0, 19), HasPassword: true }));
+            } else {
+              const idx = self.usersList.findIndex(x => x.ID === self.formData.ID);
+              if (idx !== -1) self.usersList[idx] = Object.assign({}, self.formData, { HasPassword: true });
+            }
+            alert('Mode Demo: User berhasil disimpan!');
+            self.formModalOpen = false;
+          }, 300);
+        }
+      },
+
+      toggleStatus(user) {
+        const newStatus = user.Status === 'Active' ? 'Inactive' : 'Active';
+        const self = this;
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success) {
+                user.Status = newStatus;
+                self.fetchSistemUsers();
+              } else {
+                alert(res ? res.message : 'Gagal mengubah status.');
+              }
+            })
+            .withFailureHandler(function(err) {
+              alert('Error: ' + err.message);
+            })
+            .apiToggleSistemUserStatus(user.ID, newStatus);
+        } else {
+          user.Status = newStatus;
+        }
+      },
+
+      executeDeleteUser() {
+        if (!this.selectedUser) return;
+        const self = this;
+        const userId = this.selectedUser.ID;
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              self.deleteModalOpen = false;
+              if (res && res.success) {
+                alert(res.message);
+                self.fetchSistemUsers();
+              } else {
+                alert(res ? res.message : 'Gagal menghapus user.');
+              }
+            })
+            .withFailureHandler(function(err) {
+              self.deleteModalOpen = false;
+              alert('Error: ' + err.message);
+            })
+            .apiDeleteSistemUser(userId);
+        } else {
+          self.deleteModalOpen = false;
+          self.usersList = self.usersList.filter(x => x.ID !== userId);
+          alert('Mode Demo: User ' + userId + ' dihapus!');
+        }
+      },
+
+      registerSistemModule() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              alert(res ? res.message : 'Modul berhasil terdaftar!');
+            })
+            .registerSistemUserModule();
+        } else {
+          alert('Mode Demo: registerSistemUserModule dipanggil.');
+        }
+      }
+    };
+  }
+</script>

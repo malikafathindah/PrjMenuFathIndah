@@ -1,0 +1,1818 @@
+<div x-show="currentModule === 'mod_input_data_haji'"
+  class="h-[calc(100vh-140px)] flex flex-col space-y-4 bg-slate-950 rounded-2xl shadow-2xl p-4 md:p-5 border border-slate-800 text-slate-300"
+  x-data="hajiInputManager()" x-init="initData()">
+
+  <!-- Header Section -->
+  <div
+    class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-inner">
+    <div>
+      <h2
+        class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500 flex items-center gap-3 uppercase tracking-wider ht-glow-emerald">
+        <i class="fa-solid fa-address-card text-emerald-400"></i> SPPH Jamaah Haji
+      </h2>
+      <div class="flex gap-4 mt-2">
+        <button @click="activeTab = 'input'"
+          :class="activeTab === 'input' ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold' : 'text-slate-500 hover:text-emerald-300'"
+          class="uppercase tracking-widest text-xs pb-1 transition-all">Form Input</button>
+        <button @click="activeTab = 'list'; fetchJamaahList();"
+          :class="activeTab === 'list' ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold' : 'text-slate-500 hover:text-emerald-300'"
+          class="uppercase tracking-widest text-xs pb-1 transition-all">Daftar Jamaah</button>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <template x-if="activeTab === 'input'">
+        <div class="flex items-center gap-3">
+          <button type="button" @click="resetForm()"
+            class="px-4 py-2 border border-slate-700 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all text-amber-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-eraser"></i> Bersihkan Form
+          </button>
+          <button type="button" @click="submitForm()"
+            class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg hover:from-emerald-500 hover:to-teal-500 transition-all text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <i class="fa-solid fa-save" :class="{'fa-spin': isSaving}"></i> <span
+              x-text="isSaving ? 'Menyimpan...' : 'Simpan Data'"></span>
+          </button>
+        </div>
+      </template>
+      <template x-if="activeTab === 'list'">
+        <div class="flex items-center gap-3">
+          <button type="button" @click="toggleChart()"
+            class="px-3 py-2 rounded-lg border font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all h-[38px] whitespace-nowrap"
+            :class="showChart ? 'bg-cyan-950/40 border-cyan-500/50 text-cyan-300' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300'">
+            <i class="fa-solid fa-chart-column text-cyan-400"></i>
+            <span x-text="showChart ? 'Tutup Grafik' : 'Lihat Grafik'"></span>
+          </button>
+          <select x-model="filterStatusBPIH" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all outline-none h-[38px]">
+            <option value="Semua">Semua Status</option>
+            <option value="C">Setoran Awal (C)</option>
+            <option value="F">Lunas (F)</option>
+          </select>
+          <div class="relative w-64 md:w-80">
+            <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+            <input type="text" x-model="searchList" placeholder="Cari Nama, No KTP, atau ID..."
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-inner outline-none h-[38px]">
+          </div>
+          <button type="button" @click="fetchJamaahList()"
+            class="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-all text-emerald-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2 whitespace-nowrap h-[38px]">
+            <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoadingList}"></i> Segarkan
+          </button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Form Section -->
+  <div x-show="activeTab === 'input'"
+    class="flex-1 overflow-auto rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-4 md:p-6 ht-table-scroll relative">
+    
+    <!-- Auto Fill from PDF Section -->
+    <div class="max-w-5xl mx-auto mb-6">
+      <div class="bg-gradient-to-r from-slate-900 to-slate-800 border border-emerald-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-emerald-500/5">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+            <i class="fa-solid fa-wand-magic-sparkles text-xl text-emerald-400"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest">Auto-Fill dari PDF SPPH</h3>
+            <p class="text-xs text-slate-400">Pilih file PDF SPPH/Bukti Setor untuk mengisi form otomatis.</p>
+          </div>
+        </div>
+        <div class="relative group">
+          <input type="file" accept="application/pdf" @change="handlePDFUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" :disabled="isParsingPDF">
+          <button type="button" class="px-5 py-2.5 bg-slate-800 border border-slate-700 group-hover:border-emerald-500 rounded-lg text-emerald-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-file-pdf" x-show="!isParsingPDF"></i>
+            <i class="fa-solid fa-spinner fa-spin" x-show="isParsingPDF"></i>
+            <span x-text="isParsingPDF ? 'Memindai PDF...' : 'Pilih File PDF'"></span>
+          </button>
+        </div>
+      </div>
+      <div x-show="pdfFileName" class="mt-2 text-right text-[10px] text-slate-500 font-mono" x-transition>
+        File terakhir dipindai: <span class="text-emerald-400" x-text="pdfFileName"></span>
+      </div>
+    </div>
+
+    <form @submit.prevent="submitForm" class="space-y-8 max-w-5xl mx-auto">
+
+      <!-- Group 1: Data Pendaftaran -->
+      <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2"><i
+            class="fa-solid fa-file-signature mr-2"></i> I. Data Pendaftaran</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nomor Porsi (NoBPIH)</label>
+            <input type="text" x-model="formData['NoBPIH']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all font-mono tracking-widest text-lg"
+              placeholder="Contoh: 100023456">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Tanggal Nomor Porsi</label>
+            <input type="date" x-model="formData['TglInput']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nomor SPPH</label>
+            <input type="text" x-model="formData['Nomor SPPH']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all font-mono tracking-widest text-lg"
+              placeholder="Contoh: 309138481" required>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Tanggal SPPH</label>
+            <input type="date" x-model="formData['TglSPPH']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Estimasi Keberangkatan</label>
+            <input type="text" x-model="formData['Estimasi Keberangkatan']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all font-mono tracking-widest text-lg"
+              placeholder="Contoh: 2026">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Tgl Pengecekkan (Estimasi)</label>
+            <input type="date" x-model="formData['Tgl Pengecekkan']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Jenis Program Haji</label>
+            <div class="flex gap-2">
+              <select x-model="formData['Program Haji Dropdown']"
+                @change="if($event.target.value !== 'Lainnya') formData['Jenis Program Haji'] = $event.target.value; else formData['Jenis Program Haji'] = ''"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Pilih Program --</option>
+                <option value="Haji Terencana">Haji Terencana</option>
+                <option value="Pembiayaan Haji">Pembiayaan Haji</option>
+                <option value="Setoran Awal">Setoran Awal</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+              <input type="text" x-show="formData['Program Haji Dropdown'] === 'Lainnya'"
+                x-model="formData['Jenis Program Haji']" placeholder="Ketik manual..."
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 2: Identitas Pribadi -->
+      <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2"><i
+            class="fa-solid fa-user mr-2"></i> II. Identitas Pribadi</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">1. Nomor KTP / NIK</label>
+            <input type="text" x-model="formData['Nomor KTP']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono tracking-wider focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              maxlength="16" required>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">2. Nama Lengkap (Sesuai KTP)</label>
+            <input type="text" x-model="formData['Nama Lengkap']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              required>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">3. Nama Ayah Kandung</label>
+            <input type="text" x-model="formData['Nama Ayah Kandung']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">4. Tempat Lahir</label>
+            <input type="text" x-model="formData['Tempat Lahir']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">5. Tanggal Lahir</label>
+              <input type="date" x-model="formData['Tanggal Lahir']" @change="calculateAge()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">6. Umur</label>
+              <input type="number" x-model="formData['Umur']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">7. Jenis Kelamin</label>
+            <select x-model="formData['Jenis Kelamin']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              <option value="">-- Pilih --</option>
+              <option value="Pria">1. Pria</option>
+              <option value="Wanita">2. Wanita</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">8. Kewarganegaraan</label>
+            <select x-model="formData['Kewarganegaraan']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              <option value="">-- Pilih --</option>
+              <option value="Indonesia">1. Indonesia</option>
+              <option value="Asing">2. Asing</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 3: Alamat & Kontak -->
+      <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2"><i
+            class="fa-solid fa-map-location-dot mr-2"></i> III. Alamat & Kontak</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">9. Alamat (Jalan / Gg /
+              Perumahan)</label>
+            <input type="text" x-model="formData['Alamat']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">RT</label>
+              <input type="text" x-model="formData['RT']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">RW</label>
+              <input type="text" x-model="formData['RW']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">10. Desa / Kelurahan</label>
+            <input type="text" x-model="formData['Desa/Kelurahan']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">11. Kecamatan</label>
+            <input type="text" x-model="formData['Kecamatan']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">12. Kabupaten / Kota</label>
+            <input type="text" x-model="formData['Kabupaten/Kota']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">13. Provinsi</label>
+            <input type="text" x-model="formData['Provinsi']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">14. Kode Pos</label>
+            <input type="text" x-model="formData['Kode Pos']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">No. Telepon / HP</label>
+            <input type="text" x-model="formData['No Telepon']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono">
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 4 & 5: Latar Belakang & Mahram -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2">
+            <i class="fa-solid fa-graduation-cap mr-2"></i> IV. Pendidikan & Pekerjaan</h3>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">15. Pendidikan Terakhir</label>
+              <select x-model="formData['Pendidikan']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Pilih --</option>
+                <option value="SD">1. SD</option>
+                <option value="SLTP">2. SLTP</option>
+                <option value="SLTA">3. SLTA</option>
+                <option value="D1/D2/D3/SM">4. D1/D2/D3/SM</option>
+                <option value="S1">5. S1</option>
+                <option value="S2">6. S2</option>
+                <option value="S3">7. S3</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">16. Pekerjaan</label>
+              <select x-model="formData['Pekerjaan']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Pilih --</option>
+                <option value="PNS">1. Pegawai Negeri Sipil</option>
+                <option value="TNI/POLRI">2. TNI/POLRI</option>
+                <option value="Dagang">3. Dagang</option>
+                <option value="Tani/Nelayan">4. Tani/Nelayan</option>
+                <option value="Swasta">5. Swasta</option>
+                <option value="Ibu Rumah Tangga">6. Ibu Rumah Tangga</option>
+                <option value="Pelajar/Mahasiswa">7. Pelajar/Mahasiswa</option>
+                <option value="BUMN/BUMD">8. BUMN/BUMD</option>
+                <option value="Pensiunan">9. Pensiunan</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2">
+            <i class="fa-solid fa-people-group mr-2"></i> V. Riwayat Haji & Pendamping</h3>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">17. Pergi Haji</label>
+              <select x-model="formData['Pergi Haji']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Pilih --</option>
+                <option value="Pernah">1. Pernah</option>
+                <option value="Belum">2. Belum</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">18. Nama Mahram / Pendamping</label>
+              <input type="text" x-model="formData['Nama Mahram']"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">19. Hubungan</label>
+                <select x-model="formData['Hubungan Mahram']"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                  <option value="">-- Pilih --</option>
+                  <option value="Orang Tua">1. Orang Tua</option>
+                  <option value="Anak">2. Anak</option>
+                  <option value="Suami/Istri">3. Suami/Isteri</option>
+                  <option value="Mertua">4. Mertua</option>
+                  <option value="Saudara Kandung">5. Saudara Kandung</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">20. No Daftar Pendamping</label>
+                <input type="text" x-model="formData['No Daftar Mahram']"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono tracking-wider">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 6: Fisik & Lainnya -->
+      <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2"><i
+            class="fa-solid fa-heart-pulse mr-2"></i> VI. Data Fisik & Lainnya</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">21. Gol. Darah</label>
+            <select x-model="formData['Golongan Darah']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              <option value="">--</option>
+              <option value="A">1. A</option>
+              <option value="B">2. B</option>
+              <option value="AB">3. AB</option>
+              <option value="O">4. O</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">22. Status Perkawinan</label>
+            <select x-model="formData['Status Perkawinan']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              <option value="">-- Pilih --</option>
+              <option value="Belum Menikah">1. Belum Menikah</option>
+              <option value="Menikah">2. Menikah</option>
+              <option value="Janda/Duda">3. Janda/Duda</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">23. Kode Diagnosis</label>
+            <input type="text" x-model="formData['Kode Diagnosis']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono">
+          </div>
+
+          <div class="md:col-span-4 mt-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">24. Ciri-ciri Fisik</label>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase mb-1">1. Rambut</label>
+                <input type="text" x-model="formData['Rambut']"
+                  class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:border-emerald-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase mb-1">2. Alis</label>
+                <input type="text" x-model="formData['Alis']"
+                  class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:border-emerald-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase mb-1">3. Hidung</label>
+                <input type="text" x-model="formData['Hidung']"
+                  class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:border-emerald-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase mb-1">4. Muka</label>
+                <input type="text" x-model="formData['Muka']"
+                  class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:border-emerald-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase mb-1">5. Tinggi (cm)</label>
+                <input type="number" x-model="formData.Tinggi"
+                  class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:border-emerald-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase mb-1">6. Berat (kg)</label>
+                <input type="number" x-model="formData.Berat"
+                  class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:border-emerald-500 outline-none">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 7: Paket Haji -->
+      <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2"><i
+            class="fa-solid fa-kaaba mr-2"></i> VII. Paket Haji</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nama Paket Haji</label>
+            <input type="text" x-model="formData['Nama Paket Haji']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Tipe Kamar</label>
+            <div class="flex gap-2">
+              <select x-model="formData['Tipe Kamar Dropdown']"
+                @change="if($event.target.value !== 'Lainnya') formData['Tipe Kamar'] = $event.target.value; else formData['Tipe Kamar'] = ''"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Pilih Tipe Kamar --</option>
+                <option value="Quad">Quad</option>
+                <option value="Double">Double</option>
+                <option value="Triple">Triple</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+              <input type="text" x-show="formData['Tipe Kamar Dropdown'] === 'Lainnya'" x-model="formData['Tipe Kamar']"
+                placeholder="Ketik manual..."
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2 md:col-span-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Harga (USD)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">$</span>
+                <input type="text" x-model="formData['Harga USD']" @input="formatUSD('Harga USD'); calcPaketFromUSD()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Kurs (Rp)</label>
+              <input type="text" x-model="formData['Kurs Paket']" @input="formatIDR('Kurs Paket'); calcPaketFromUSD()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Harga (Rupiah)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">Rp</span>
+                <input type="text" x-model="formData['Harga Rupiah']"
+                  @input="formatIDR('Harga Rupiah'); calcPaketFromIDR()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">DownPayment (DP) USD</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">$</span>
+                <input type="text" x-model="formData['DownPayment']" @input="formatUSD('DownPayment')"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Potongan Diskon (USD)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">$</span>
+                <input type="text" x-model="formData['Diskon USD']"
+                  @input="formatUSD('Diskon USD'); calcDiskonFromUSD()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Potongan Diskon (Rupiah)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">Rp</span>
+                <input type="text" x-model="formData['Diskon Rupiah']"
+                  @input="formatIDR('Diskon Rupiah'); calcDiskonFromIDR()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2 mt-2 pt-4 border-t border-slate-700">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Harga Setelah Diskon (USD)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-emerald-400 font-bold">$</span>
+                <input type="text" x-model="formData['Total Harga USD']" readonly
+                  class="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-emerald-400 font-bold cursor-not-allowed outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Harga Setelah Diskon (Rupiah)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-emerald-400 font-bold">Rp</span>
+                <input type="text" x-model="formData['Total Harga Rupiah']" readonly
+                  class="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-emerald-400 font-bold cursor-not-allowed outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Catatan</label>
+            <input type="text" x-model="formData['Catatan Paket']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 8: Informasi Agen -->
+      <div class="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
+        <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2"><i
+            class="fa-solid fa-briefcase mr-2"></i> VIII. Informasi Agen</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nama Agen</label>
+            <input type="text" x-model="formData['Nama Agen']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">No HP Agen</label>
+            <input type="text" x-model="formData['No HP Agen']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono">
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Faedah (USD)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">$</span>
+                <input type="text" x-model="formData['Faedah USD']" @input="formatUSD('Faedah USD'); calcAgenFromUSD()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Faedah (Rupiah)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-slate-400">Rp</span>
+                <input type="text" x-model="formData['Faedah Rupiah']"
+                  @input="formatIDR('Faedah Rupiah'); calcAgenFromIDR()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Dibayarkan Pada Tanggal</label>
+            <input type="date" x-model="formData['Tanggal Bayar Agen']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Bank</label>
+            <select x-model="formData['Bank Agen']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              <option value="">-- Pilih Bank --</option>
+              <option value="BSI">BSI</option>
+              <option value="Mandiri">Mandiri</option>
+              <option value="BCA">BCA</option>
+              <option value="BNI">BNI</option>
+              <option value="BRI">BRI</option>
+              <option value="BTN">BTN</option>
+              <option value="BJB">BJB</option>
+              <option value="CIMB Niaga">CIMB Niaga</option>
+              <option value="Muamalat">Muamalat</option>
+              <option value="Mega Syariah">Mega Syariah</option>
+              <option value="Permata">Permata</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nomor Rekening Agen</label>
+            <input type="text" x-model="formData['nomor rekening agent']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nomor Jurnal ErahHajj</label>
+            <input type="text" x-model="formData['Nomor Jurnal ErahHajj']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Catatan Agen</label>
+            <input type="text" x-model="formData['Catatan Agen']"
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- List Section -->
+  <div x-show="activeTab === 'list'" x-cloak
+    class="flex-1 min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-4 md:p-6 ht-table-scroll relative flex flex-col gap-4">
+
+    <!-- PANEL GRAFIK ESTIMASI KEBERANGKATAN (BISA DITUTUP) -->
+    <div x-show="showChart" x-collapse.duration.300ms class="bg-slate-900/95 border border-cyan-500/30 rounded-xl p-4 shadow-xl relative shrink-0">
+      <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm shadow-inner">
+            <i class="fa-solid fa-chart-column"></i>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-slate-100 uppercase tracking-wider">Grafik Distribusi Estimasi Keberangkatan Jamaah</h4>
+            <p class="text-[11px] text-slate-400">Total Jamaah Terjadwal per Tahun / Estimasi Berangkat</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-cyan-400 bg-cyan-950/60 border border-cyan-800/40 px-2.5 py-1 rounded font-mono font-bold" x-text="chartTotalLabel"></span>
+          <button type="button" @click="showChart = false" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg transition-colors" title="Tutup Grafik">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Canvas Container -->
+      <div class="h-48 md:h-56 w-full relative">
+        <canvas id="hajiEstimasiChartCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="bg-slate-900 rounded-xl border border-slate-700 shadow-lg shrink-0">
+      <div class="overflow-x-auto ht-table-scroll">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+          <thead class="bg-slate-800 text-slate-300 text-xs uppercase font-bold tracking-wider">
+            <tr>
+              <th class="px-4 py-3 text-center border-b border-slate-700 w-16">No</th>
+              <th class="px-4 py-3 border-b border-slate-700">No Porsi</th>
+              <th class="px-4 py-3 border-b border-slate-700">Nama Lengkap</th>
+              <th class="px-4 py-3 border-b border-slate-700">Program / Paket</th>
+              <th class="px-4 py-3 border-b border-slate-700">Tgl Porsi</th>
+              <th class="px-4 py-3 text-center border-b border-slate-700">Estimasi</th>
+              <th class="px-4 py-3 text-center border-b border-slate-700">Masa Tunggu</th>
+              <th class="px-4 py-3 text-center border-b border-slate-700">Status</th>
+              <th class="px-4 py-3 text-center border-b border-slate-700 w-28">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/50">
+            <template x-if="isLoadingList">
+              <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-slate-500">
+                  <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-emerald-500"></i>
+                  <p class="text-sm uppercase tracking-widest font-semibold mt-2">Memuat Data...</p>
+                </td>
+              </tr>
+            </template>
+            <template x-if="!isLoadingList && filteredList.length === 0">
+              <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-slate-500">
+                  <i class="fa-solid fa-inbox text-3xl mb-2 opacity-50"></i>
+                  <p class="text-sm uppercase tracking-widest font-semibold mt-2">Tidak ada data jamaah</p>
+                </td>
+              </tr>
+            </template>
+            <template x-for="(item, index) in filteredList" :key="(item.NoBPIH || item.NoPorsi || item.IDJamaah || 'empty') + '_' + index">
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="px-4 py-3 text-center text-slate-500" x-text="item._no"></td>
+                <td class="px-4 py-3 font-mono text-emerald-400 font-bold" x-text="item.NoBPIH || item.NoPorsi || item['Nomor Porsi'] || item['No Porsi'] || item.IDJamaah || '-'"></td>
+                <td class="px-4 py-3 font-semibold text-slate-200" x-text="item.Nama || '-'"></td>
+                <td class="px-4 py-3 text-slate-400"
+                  x-text="(item.JenisHaji || '-') + ' / ' + (item['Nama Paket Haji'] || '-')"></td>
+                <td class="px-4 py-3 text-slate-400" x-text="item.TglInput || '-'"></td>
+                <td class="px-4 py-3 text-center text-amber-400 font-bold" x-text="item.EstimasiBerangkat || '-'"></td>
+                <td class="px-4 py-3 text-center">
+                  <template x-if="getMasaTunggu(item.EstimasiBerangkat)">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                      <i class="fa-regular fa-clock text-[10px]"></i>
+                      <span x-text="getMasaTunggu(item.EstimasiBerangkat)"></span>
+                    </span>
+                  </template>
+                  <template x-if="!getMasaTunggu(item.EstimasiBerangkat)">
+                    <span class="text-slate-500 text-xs">-</span>
+                  </template>
+                </td>
+                <td class="px-4 py-3 text-center font-bold font-mono">
+                  <span class="px-2 py-1 rounded text-xs uppercase" 
+                        :class="item.StatusBPIH === 'F' ? 'bg-emerald-500/20 text-emerald-400' : (item.StatusBPIH === 'C' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-slate-700 text-slate-300')"
+                        x-text="item.StatusBPIH || 'C'"></span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <div class="flex items-center justify-center gap-2">
+                    <button type="button" @click="viewDetail(item)" title="Detail / Cetak SPPH"
+                      class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center">
+                      <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button type="button" @click="editJamaah(item)" title="Edit"
+                      class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button type="button" @click="deleteJamaah(item)" title="Hapus"
+                      class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableSuratJamaahDoc, #printableSuratJamaahDoc * {
+        visibility: visible;
+      }
+      #printableSuratJamaahDoc {
+        position: absolute !important;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+      }
+      /* Ensure parent containers don't restrict height or trap layout */
+      [x-show="selectedDetail"] {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow: visible !important;
+        display: block !important;
+      }
+      .fixed, .overflow-auto, .overflow-hidden, .max-h-\\[95vh\\] {
+        position: static !important;
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+      }
+      .no-print-area {
+        display: none !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 5mm;
+      }
+
+      /* ========================================= */
+      /* COMPRESS LAYOUT TO FIT EXACTLY 1 A4 PAGE  */
+      /* ========================================= */
+      #printableSuratJamaahDoc {
+        padding: 15px !important;
+        zoom: 0.80 !important;
+        -moz-transform: scale(0.80);
+        -moz-transform-origin: top left;
+      }
+      #printableSuratJamaahDoc .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+          margin-top: 8px !important; 
+      }
+      #printableSuratJamaahDoc .mb-8 { margin-bottom: 8px !important; }
+      #printableSuratJamaahDoc .pb-6 { padding-bottom: 8px !important; }
+      #printableSuratJamaahDoc .mt-12 { margin-top: 12px !important; }
+      #printableSuratJamaahDoc .pt-8 { padding-top: 8px !important; }
+      #printableSuratJamaahDoc .mb-16 { margin-bottom: 30px !important; }
+      #printableSuratJamaahDoc .gap-8, #printableSuratJamaahDoc .gap-6 { gap: 8px !important; }
+      #printableSuratJamaahDoc .p-5 { padding: 10px !important; }
+      #printableSuratJamaahDoc .h-52 { height: 110px !important; }
+      #printableSuratJamaahDoc .w-40 { width: 85px !important; }
+      #printableSuratJamaahDoc h1 { font-size: 18px !important; }
+      #printableSuratJamaahDoc h2 { font-size: 11px !important; margin-bottom: 4px !important; margin-top: 4px !important; }
+      #printableSuratJamaahDoc .text-xs { font-size: 10px !important; }
+      #printableSuratJamaahDoc .text-sm { font-size: 11px !important; }
+    }
+  </style>
+
+  <!-- Detail Modal -->
+  <div x-show="selectedDetail" x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-slate-200 shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden rounded-xl"
+      @click.away="selectedDetail = null">
+      <div class="p-4 border-b border-slate-300 flex justify-between items-center bg-white no-print-area">
+        <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-file-contract text-emerald-600 mr-2"></i>
+          Pratinjau SPPH</h3>
+        <div class="flex items-center gap-4">
+          <button type="button" onclick="window.print()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider shadow shadow-emerald-500/30 transition-all flex items-center gap-2">
+            <i class="fa-solid fa-print"></i> Cetak A4
+          </button>
+          <button type="button" @click="selectedDetail = null"
+            class="text-slate-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-times fa-xl"></i></button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-auto ht-table-scroll bg-slate-100">
+        <!-- Modern Ultra-Compact Container -->
+        <div id="printableSuratJamaahDoc" class="bg-white text-slate-800 p-6 rounded-xl shadow-xl mx-auto max-w-4xl relative overflow-hidden border border-slate-200" style="font-family: 'Inter', sans-serif;">
+          <!-- Decor -->
+          <div class="absolute top-0 right-0 w-64 h-64 rounded-full bg-emerald-50 opacity-40 pointer-events-none -mr-16 -mt-16"></div>
+          
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-4 border-b-2 border-emerald-500 pb-3 relative z-10">
+            <div class="flex items-center gap-4">
+              <img src="https://lh3.googleusercontent.com/d/1CYIcm16IdX99mhwddZby1OHulGJpNd8j" class="h-12 object-contain" alt="Logo" onerror="this.src='https://drive.google.com/thumbnail?id=1CYIcm16IdX99mhwddZby1OHulGJpNd8j&sz=w500';" />
+              <div>
+                <h1 class="font-black text-xl text-emerald-900 tracking-tight leading-tight">SURAT PENDAFTARAN PERGI HAJI (SPPH)</h1>
+                <p class="text-emerald-600 font-medium tracking-wide text-[10px] uppercase mt-0.5">Formulir Data Calon Jamaah & Paket</p>
+              </div>
+            </div>
+            <div class="text-right bg-emerald-50 px-4 py-1.5 rounded-lg border border-emerald-200">
+              <div class="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Nomor SPPH</div>
+              <div class="font-mono font-bold text-lg text-slate-800" x-text="selectedDetail?.NoSPPH || 'Belum Terbit'"></div>
+            </div>
+          </div>
+
+          <div class="space-y-3 relative z-10">
+
+            <!-- Identitas Pribadi -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+              <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                <h2 class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-user-circle"></i> Identitas Pribadi</h2>
+              </div>
+              <div class="grid grid-cols-4 gap-0 bg-white">
+                <div class="p-2 border-r border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Nomor Porsi</div>
+                  <div class="font-mono font-bold text-emerald-700 text-xs" x-text="selectedDetail?.NoBPIH || selectedDetail?.NoPorsi || selectedDetail?.['Nomor Porsi'] || selectedDetail?.['No Porsi'] || '-'"></div>
+                </div>
+                <div class="p-2 border-r border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">NIK / KTP</div>
+                  <div class="font-bold text-slate-800 text-xs font-mono" x-text="selectedDetail?.NoKTP || '-'"></div>
+                </div>
+                <div class="col-span-2 p-2 border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Nama Lengkap</div>
+                  <div class="font-black text-emerald-900 text-sm" x-text="selectedDetail?.Nama || '-'"></div>
+                </div>
+                
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Nama Ayah Kandung</div>
+                  <div class="font-bold text-slate-800 text-xs" x-text="selectedDetail?.NamaOrtu || '-'"></div>
+                </div>
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Tempat & Tanggal Lahir</div>
+                  <div class="font-bold text-slate-800 text-xs">
+                    <span x-text="selectedDetail?.TempatLahir || selectedDetail?.KabKota || '-'"></span>,
+                    <span x-text="(selectedDetail?.TanggalLahir || selectedDetail?.['Tanggal Lahir'] || selectedDetail?.TglLahir) ? new Date(selectedDetail.TanggalLahir || selectedDetail['Tanggal Lahir'] || selectedDetail.TglLahir).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'}) : '-'"></span>
+                  </div>
+                </div>
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Umur / Kelamin</div>
+                  <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.Umur ? selectedDetail.Umur + ' Thn' : '-'"></span> / <span x-text="selectedDetail?.JenisKelamin || '-'"></span></div>
+                </div>
+                <div class="p-2 border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Kewarganegaraan / Nikah</div>
+                  <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.Kewarganegaraan || '-'"></span> / <span x-text="selectedDetail?.StatusNikah || '-'"></span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Demografi & Fisik -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+              <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                <h2 class="text-[10px] font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-address-book"></i> Demografi & Fisik</h2>
+              </div>
+              <div class="grid grid-cols-4 gap-0 bg-white">
+                <div class="col-span-3 p-2 border-r border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Alamat Lengkap</div>
+                  <div class="font-bold text-slate-800 text-xs leading-tight">
+                    <span x-text="selectedDetail?.Alamat || '-'"></span>
+                    <span x-show="selectedDetail?.RT || selectedDetail?.RW"> RT <span x-text="selectedDetail?.RT || '-'"></span>/RW <span x-text="selectedDetail?.RW || '-'"></span></span>,
+                    Desa <span x-text="selectedDetail?.DesaKel || '-'"></span>, Kec. <span x-text="selectedDetail?.Kecamatan || '-'"></span>, <span x-text="selectedDetail?.KabKota || '-'"></span>, <span x-text="selectedDetail?.NmProvinsi || '-'"></span>
+                  </div>
+                </div>
+                <div class="p-2 border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Kode Pos & HP</div>
+                  <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.KodePos || '-'"></span> / <span x-text="selectedDetail?.NoHP || '-'"></span></div>
+                </div>
+
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Pendidikan / Pekerjaan</div>
+                  <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.Pendidikan || '-'"></span> / <span x-text="selectedDetail?.Pekerjaan || '-'"></span></div>
+                </div>
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Rambut / Muka</div>
+                  <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.Rambut || '-'"></span>, <span x-text="selectedDetail?.Muka || '-'"></span></div>
+                </div>
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Tinggi / Berat</div>
+                  <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.Tinggi || selectedDetail?.['Tinggi (cm)'] || '-'"></span> CM / <span x-text="selectedDetail?.Berat || selectedDetail?.['Berat (kg)'] || '-'"></span> KG</div>
+                </div>
+                <div class="p-2 border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Gol. Darah / Pernah Haji</div>
+                  <div class="font-bold text-slate-800 text-xs"><span class="text-red-600" x-text="selectedDetail?.GolDarah || '-'"></span> / <span x-text="selectedDetail?.PergiHaji == '1' ? 'Pernah' : 'Belum'"></span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mahram & Program -->
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Mahram -->
+              <div class="border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+                <div class="bg-blue-50 px-3 py-1.5 border-b border-blue-100">
+                  <h2 class="text-[10px] font-bold text-blue-800 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-users"></i> Pendamping / Mahram</h2>
+                </div>
+                <div class="p-2 bg-white flex-1 flex flex-col justify-center">
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <div class="text-[9px] text-slate-500 uppercase mb-0.5">Nama & Hubungan</div>
+                      <div class="font-bold text-slate-800 text-xs"><span x-text="selectedDetail?.Mahram || selectedDetail?.['Nama Mahram'] || '-'"></span> (<span x-text="selectedDetail?.HubMahram || selectedDetail?.['Hubungan Mahram'] || '-'"></span>)</div>
+                    </div>
+                    <div>
+                      <div class="text-[9px] text-slate-500 uppercase mb-0.5">No. Daftar Mahram</div>
+                      <div class="font-bold text-slate-800 text-xs" x-text="selectedDetail?.['No Daftar Mahram'] || selectedDetail?.NoDaftarMahram || '-'"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Travel & Estimasi -->
+              <div class="border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+                <div class="bg-amber-50 px-3 py-1.5 border-b border-amber-100">
+                  <h2 class="text-[10px] font-bold text-amber-800 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-plane-departure"></i> Travel & Estimasi</h2>
+                </div>
+                <div class="p-2 bg-white flex-1 flex flex-col justify-center">
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <div class="text-[9px] text-slate-500 uppercase mb-0.5">Penyelenggara</div>
+                      <div class="font-bold text-slate-800 text-xs" x-text="selectedDetail?.Travel || 'PT. FATH INDAH TRAVEL SERVICE'"></div>
+                    </div>
+                    <div>
+                      <div class="text-[9px] text-slate-500 uppercase mb-0.5">Estimasi Keberangkatan</div>
+                      <div class="font-bold text-amber-600 text-xs flex items-center gap-1.5 flex-wrap">
+                        <span x-text="selectedDetail?.EstimasiBerangkat || '-'"></span>
+                        <span x-show="getMasaTunggu(selectedDetail?.EstimasiBerangkat)"
+                              class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold"
+                              x-text="'(Masa Tunggu: ' + getMasaTunggu(selectedDetail?.EstimasiBerangkat) + ')'"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Program Haji, Biaya & Agen -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+              <div class="bg-indigo-50 px-3 py-1.5 border-b border-indigo-100">
+                <h2 class="text-[10px] font-bold text-indigo-800 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-file-invoice-dollar"></i> Program, Biaya & Agen</h2>
+              </div>
+              <div class="grid grid-cols-4 gap-0 bg-white">
+                <div class="col-span-2 p-2 border-r border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Paket Program / Kamar</div>
+                  <div class="font-bold text-indigo-900 text-xs">
+                    <span x-text="selectedDetail?.['Nama Paket Haji'] || selectedDetail?.JenisHaji || selectedDetail?.['Jenis Program Haji'] || '-'"></span> / <span x-text="selectedDetail?.['Tipe Kamar'] || '-'"></span>
+                  </div>
+                </div>
+                <div class="p-2 border-r border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Down Payment (DP)</div>
+                  <div class="font-bold text-slate-800 text-xs" x-text="selectedDetail?.DownPayment ? 'Rp ' + selectedDetail.DownPayment : '-'"></div>
+                </div>
+                <div class="p-2 border-b border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Total Harga Paket</div>
+                  <div class="font-bold text-slate-800 text-xs">
+                    <span x-show="selectedDetail?.['Total Harga USD']" x-text="'USD ' + selectedDetail['Total Harga USD']"></span>
+                    <span x-show="selectedDetail?.['Total Harga Rupiah']" class="text-emerald-700 ml-1" x-text="'Rp ' + selectedDetail['Total Harga Rupiah']"></span>
+                  </div>
+                </div>
+
+                <div class="p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Nama Agen</div>
+                  <div class="font-bold text-slate-800 text-xs" x-text="selectedDetail?.['Nama Agen'] || '-'"></div>
+                </div>
+                <div class="col-span-2 p-2 border-r border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Pembayaran & Komisi Agen (Faedah)</div>
+                  <div class="font-bold text-slate-800 text-xs">
+                    <span x-text="selectedDetail?.['Bank Agen'] || '-'"></span> - <span x-text="selectedDetail?.['nomor rekening agent'] || '-'"></span>
+                    <span x-show="selectedDetail?.['Faedah Rupiah']" class="text-indigo-600 ml-1" x-text="'(Komisi: Rp ' + selectedDetail['Faedah Rupiah'] + ')'"></span>
+                  </div>
+                </div>
+                <div class="p-2 border-slate-100">
+                  <div class="text-[9px] text-slate-500 uppercase mb-0.5">Tgl Bayar Agen</div>
+                  <div class="font-bold text-slate-800 text-xs" x-text="selectedDetail?.['Tanggal Bayar Agen'] || '-'"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tanda Tangan -->
+            <div class="flex mt-3 pt-3 border-t border-slate-200 justify-between items-end">
+              <div class="w-24 h-32 bg-slate-100 rounded-lg overflow-hidden shadow-sm flex items-center justify-center border-2 border-slate-200">
+                <img src="" alt="Foto" class="w-full h-full object-cover" x-bind:src="selectedDetail?.Foto ? (selectedDetail.Foto.includes('drive.google.com') ? 'https://lh3.googleusercontent.com/d/' + (selectedDetail.Foto.match(/[-\w]{25,}/) ? selectedDetail.Foto.match(/[-\w]{25,}/)[0] : '') : selectedDetail.Foto) : `https://ui-avatars.com/api/?name=${selectedDetail?.Nama || 'J'}&background=e2e8f0&color=475569&size=200`">
+              </div>
+
+              <div class="text-center w-48">
+                <div class="text-[10px] text-slate-500 mb-6">
+                  Jakarta, <span x-text="selectedDetail?.TglInput ? new Date(selectedDetail.TglInput).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'}) : new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})"></span>
+                </div>
+                <div class="font-bold text-slate-800 border-b border-slate-800 pb-1 mx-2 text-xs uppercase" x-text="selectedDetail?.Nama || 'Calon Jamaah Haji'"></div>
+                <div class="text-[9px] text-slate-500 mt-1 uppercase tracking-widest">Tanda Tangan</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function hajiInputManager() {
+    return {
+      activeTab: 'input',
+      jamaahList: [],
+      isLoadingList: false,
+      searchList: '',
+      filterStatusBPIH: 'Semua',
+      selectedDetail: null,
+      isSaving: false,
+      formData: {},
+
+      // State Grafik Estimasi Keberangkatan
+      showChart: false,
+      chartInstance: null,
+      chartTotalLabel: '0 Jamaah Terjadwal',
+
+      toggleChart() {
+        this.showChart = !this.showChart;
+        if (this.showChart) {
+          this.$nextTick(() => {
+            this.renderChart();
+          });
+        }
+      },
+
+      renderChart() {
+        if (typeof Chart === 'undefined') {
+          console.warn('Library Chart.js belum dimuat');
+          return;
+        }
+
+        const canvas = document.getElementById('hajiEstimasiChartCanvas');
+        if (!canvas) return;
+
+        // Ambil data dari list jamaah yang sedang ditampilkan/disimpan
+        const countMap = {};
+        let totalScheduled = 0;
+        let totalBelum = 0;
+
+        (this.jamaahList || []).forEach(item => {
+          const val = String(item.EstimasiBerangkat || item.EstimasiKeberangkatan || '').trim();
+          if (val) {
+            countMap[val] = (countMap[val] || 0) + 1;
+            totalScheduled++;
+          } else {
+            totalBelum++;
+          }
+        });
+
+        this.chartTotalLabel = `${totalScheduled} Jamaah Terjadwal`;
+
+        // Urutkan tahun / estimasi secara alfabetis / numerik
+        const sortedKeys = Object.keys(countMap).sort((a, b) => {
+          const numA = parseInt(a, 10);
+          const numB = parseInt(b, 10);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.localeCompare(b);
+        });
+
+        // Kategori belum diisi
+        if (totalBelum > 0) {
+          sortedKeys.push('Belum Diisi');
+          countMap['Belum Diisi'] = totalBelum;
+        }
+
+        const labels = sortedKeys;
+        const dataValues = labels.map(k => countMap[k]);
+
+        // Hancurkan instance lama bila ada
+        if (this.chartInstance) {
+          this.chartInstance.destroy();
+          this.chartInstance = null;
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Jumlah Jamaah',
+              data: dataValues,
+              backgroundColor: labels.map(k => k === 'Belum Diisi' ? 'rgba(239, 68, 68, 0.65)' : 'rgba(6, 182, 212, 0.65)'),
+              borderColor: labels.map(k => k === 'Belum Diisi' ? '#ef4444' : '#06b6d4'),
+              borderWidth: 1.5,
+              borderRadius: 6,
+              maxBarThickness: 45
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+              padding: {
+                top: 25
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ` ${context.parsed.y} Jamaah`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: {
+                  color: 'rgba(51, 65, 85, 0.4)'
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  font: {
+                    size: 11
+                  }
+                }
+              },
+              y: {
+                beginAtZero: true,
+                grace: '15%',
+                grid: {
+                  color: 'rgba(51, 65, 85, 0.4)'
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  stepSize: 1,
+                  precision: 0,
+                  font: {
+                    size: 11
+                  }
+                }
+              }
+            }
+          },
+          plugins: [{
+            id: 'barValueLabels',
+            afterDatasetsDraw: (chart) => {
+              const { ctx } = chart;
+              chart.data.datasets.forEach((dataset, datasetIdx) => {
+                const meta = chart.getDatasetMeta(datasetIdx);
+                meta.data.forEach((bar, index) => {
+                  const val = dataset.data[index];
+                  if (val !== undefined && val !== null) {
+                    ctx.save();
+                    ctx.fillStyle = '#38bdf8'; // Cyan text color
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    // Render angka jumlah tepat di atas bar
+                    ctx.fillText(val, bar.x, bar.y - 4);
+                    ctx.restore();
+                  }
+                });
+              });
+            }
+          }]
+        });
+      },
+
+      get filteredList() {
+        let list = this.jamaahList;
+        
+        if (this.filterStatusBPIH !== 'Semua') {
+          list = list.filter(item => {
+            const st = String(item.StatusBPIH || '').trim().toUpperCase();
+            if (this.filterStatusBPIH === 'C') return st === 'C' || st === ''; // Default to C if empty
+            if (this.filterStatusBPIH === 'F') return st === 'F';
+            return st === this.filterStatusBPIH;
+          });
+        }
+        
+        if (this.searchList) {
+          const q = this.searchList.toLowerCase();
+          list = list.filter(item => {
+            return (item.Nama && String(item.Nama).toLowerCase().includes(q)) ||
+              (item.NoBPIH && String(item.NoBPIH).toLowerCase().includes(q)) ||
+              (item.NoPorsi && String(item.NoPorsi).toLowerCase().includes(q)) ||
+              (item.IDJamaah && String(item.IDJamaah).toLowerCase().includes(q)) ||
+              (item.NoKTP && String(item.NoKTP).toLowerCase().includes(q));
+          });
+        }
+
+        // Helper parse tanggal untuk fallback sorting
+        const parseDateSafe = (dStr) => {
+          if (!dStr) return 0;
+          const str = String(dStr).trim();
+          const parts = str.split(/[\/\-]/);
+          if (parts.length === 3) {
+            if (parts[2].length === 4) { // DD/MM/YYYY
+              return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime() || 0;
+            } else if (parts[0].length === 4) { // YYYY-MM-DD
+              return new Date(`${parts[0]}-${parts[1]}-${parts[2]}`).getTime() || 0;
+            }
+          }
+          return new Date(str).getTime() || 0;
+        };
+
+        const getPorsiVal = (item) => {
+          return String(item.NoBPIH || item.NoPorsi || item['Nomor Porsi'] || item['No Porsi'] || '').trim();
+        };
+
+        // Sort by No Porsi descending (jika kosong atau sama, fallback ke tanggal porsi descending)
+        const sorted = list.slice().sort((a, b) => {
+          const p1 = getPorsiVal(a);
+          const p2 = getPorsiVal(b);
+
+          if (p1 && p2 && p1 !== p2) {
+            return p2.localeCompare(p1, undefined, { numeric: true });
+          }
+          if (p1 && !p2) return -1;
+          if (!p1 && p2) return 1;
+
+          const d1 = parseDateSafe(a.TglInput || a.TglSPPH);
+          const d2 = parseDateSafe(b.TglInput || b.TglSPPH);
+          return d2 - d1;
+        });
+        
+        return sorted.map((item, i) => {
+          item._no = i + 1;
+          return item;
+        });
+      },
+      initData() {
+        this.resetForm();
+      },
+
+      resetForm() {
+        this.formData = {
+          'IDJamaah': '',
+          'PIN': '3065',
+          'Travel': 'PT. FATH INDAH TRAVEL SERVICE',
+          'NoBPIH': '',
+          'TglInput': '',
+          'Nomor SPPH': '',
+          'TglSPPH': '',
+          'Nomor KTP': '',
+          'Nama Lengkap': '',
+          'Nama Ayah Kandung': '',
+          'Tempat Lahir': '',
+          'Tanggal Lahir': '',
+          'Umur': '',
+          'Jenis Kelamin': '',
+          'Kewarganegaraan': '',
+          'Alamat': '',
+          'RT': '',
+          'RW': '',
+          'Desa/Kelurahan': '',
+          'Kecamatan': '',
+          'Kabupaten/Kota': '',
+          'Provinsi': '',
+          'Kode Pos': '',
+          'No Telepon': '',
+          'Pendidikan': '',
+          'Pekerjaan': '',
+          'Pergi Haji': '',
+          'Nama Mahram': '',
+          'Hubungan Mahram': '',
+          'No Daftar Mahram': '',
+          'Golongan Darah': '',
+          'Status Perkawinan': '',
+          'Kode Diagnosis': '',
+          'Rambut': '',
+          'Alis': '',
+          'Hidung': '',
+          'Muka': '',
+          'Tinggi': '',
+          'Berat': '',
+          'Jenis Haji': '',
+          'Program Haji Dropdown': '',
+          'Jenis Program Haji': '',
+          'Nama Paket Haji': '',
+          'Tipe Kamar Dropdown': '',
+          'Tipe Kamar': '',
+          'Harga USD': '',
+          'Kurs Paket': '',
+          'Harga Rupiah': '',
+          'Diskon USD': '',
+          'Diskon Rupiah': '',
+          'Total Harga USD': '',
+          'Total Harga Rupiah': '',
+          'Catatan Paket': '',
+          'Nama Agen': '',
+          'No HP Agen': '',
+          'Faedah USD': '',
+          'Faedah Rupiah': '',
+          'Tanggal Bayar Agen': '',
+          'Bank Agen': '',
+          'Nomor Jurnal ErahHajj': '',
+          'Catatan Agen': '',
+          'DownPayment': '',
+          'nomor rekening agent': '',
+          'Estimasi Keberangkatan': '',
+          'Tgl Pengecekkan': ''
+        };
+      },
+
+      formatIDR(field) {
+        let val = this.formData[field];
+        if (!val) {
+          this.formData[field] = '';
+          return;
+        }
+        val = val.toString().replace(/[^0-9]/g, '');
+        if (!val) {
+          this.formData[field] = '';
+          return;
+        }
+        this.formData[field] = new Intl.NumberFormat('id-ID').format(val);
+      },
+
+      formatUSD(field) {
+        let val = this.formData[field];
+        if (!val) {
+          this.formData[field] = '';
+          return;
+        }
+        val = val.toString().replace(/[^0-9,]/g, '');
+        let parts = val.split(',');
+        let integerPart = parts[0];
+        let decimalPart = parts.length > 1 ? ',' + parts[1].substring(0, 2) : '';
+
+        if (integerPart) {
+          integerPart = new Intl.NumberFormat('id-ID').format(integerPart.replace(/\./g, ''));
+        }
+        this.formData[field] = integerPart + decimalPart;
+      },
+
+      parseIDR(val) {
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(/\./g, ''));
+      },
+
+      parseUSD(val) {
+        if (!val) return 0;
+        let str = val.toString().replace(/\./g, '').replace(',', '.');
+        return parseFloat(str) || 0;
+      },
+
+      calcPaketFromUSD() {
+        let usd = this.parseUSD(this.formData['Harga USD']);
+        let kurs = this.parseIDR(this.formData['Kurs Paket']);
+        if (kurs > 0) {
+          this.formData['Harga Rupiah'] = new Intl.NumberFormat('id-ID').format(usd * kurs);
+
+          if (this.formData['Diskon USD']) this.calcDiskonFromUSD();
+          if (this.formData['Faedah USD']) this.calcAgenFromUSD();
+        }
+        this.calcTotalHarga();
+      },
+
+      calcPaketFromIDR() {
+        let idr = this.parseIDR(this.formData['Harga Rupiah']);
+        let kurs = this.parseIDR(this.formData['Kurs Paket']);
+        if (kurs > 0) {
+          let usdVal = (idr / kurs).toFixed(2).replace('.', ',');
+          this.formData['Harga USD'] = usdVal;
+          this.formatUSD('Harga USD');
+        }
+        this.calcTotalHarga();
+      },
+
+      calcDiskonFromUSD() {
+        let usd = this.parseUSD(this.formData['Diskon USD']);
+        let kurs = this.parseIDR(this.formData['Kurs Paket']);
+        if (kurs > 0) {
+          this.formData['Diskon Rupiah'] = new Intl.NumberFormat('id-ID').format(usd * kurs);
+        }
+        this.calcTotalHarga();
+      },
+
+      calcDiskonFromIDR() {
+        let idr = this.parseIDR(this.formData['Diskon Rupiah']);
+        let kurs = this.parseIDR(this.formData['Kurs Paket']);
+        if (kurs > 0) {
+          let usdVal = (idr / kurs).toFixed(2).replace('.', ',');
+          this.formData['Diskon USD'] = usdVal;
+          this.formatUSD('Diskon USD');
+        }
+        this.calcTotalHarga();
+      },
+
+      calcTotalHarga() {
+        let hargaUSD = this.parseUSD(this.formData['Harga USD']);
+        let diskonUSD = this.parseUSD(this.formData['Diskon USD']);
+        let totalUSD = hargaUSD - diskonUSD;
+        if (totalUSD < 0) totalUSD = 0;
+        let tUsdStr = totalUSD.toFixed(2).replace('.', ',');
+        this.formData['Total Harga USD'] = tUsdStr;
+        this.formatUSD('Total Harga USD');
+
+        let hargaIDR = this.parseIDR(this.formData['Harga Rupiah']);
+        let diskonIDR = this.parseIDR(this.formData['Diskon Rupiah']);
+        let totalIDR = hargaIDR - diskonIDR;
+        if (totalIDR < 0) totalIDR = 0;
+        this.formData['Total Harga Rupiah'] = new Intl.NumberFormat('id-ID').format(totalIDR);
+      },
+
+      calcAgenFromUSD() {
+        let usd = this.parseUSD(this.formData['Faedah USD']);
+        let kurs = this.parseIDR(this.formData['Kurs Paket']);
+        if (kurs > 0) {
+          this.formData['Faedah Rupiah'] = new Intl.NumberFormat('id-ID').format(usd * kurs);
+        }
+      },
+
+      calcAgenFromIDR() {
+        let idr = this.parseIDR(this.formData['Faedah Rupiah']);
+        let kurs = this.parseIDR(this.formData['Kurs Paket']);
+        if (kurs > 0) {
+          let usdVal = (idr / kurs).toFixed(2).replace('.', ',');
+          this.formData['Faedah USD'] = usdVal;
+          this.formatUSD('Faedah USD');
+        }
+      },
+
+      calculateAge() {
+        const dob = this.formData['Tanggal Lahir'];
+        if (dob) {
+          const birthDate = new Date(dob);
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          this.formData['Umur'] = age > 0 ? age : 0;
+        }
+      },
+
+      submitForm() {
+        if (!this.formData['Nomor KTP'] || !this.formData['Nama Lengkap']) {
+          Swal.fire({
+            title: 'Validasi Gagal',
+            text: 'Nomor KTP dan Nama Lengkap wajib diisi!',
+            icon: 'warning',
+            background: '#0f172a',
+            color: '#fbbf24'
+          });
+          return;
+        }
+
+        this.isSaving = true;
+
+        google.script.run
+          .withSuccessHandler(res => {
+            this.isSaving = false;
+            if (res && res.success) {
+              Swal.fire({
+                title: 'Berhasil!',
+                text: res.message,
+                icon: 'success',
+                background: '#0f172a',
+                color: '#34d399'
+              });
+              this.resetForm();
+            } else {
+              Swal.fire({
+                title: 'Gagal',
+                text: res?.message || 'Gagal menyimpan data',
+                icon: 'error',
+                background: '#0f172a',
+                color: '#f87171'
+              });
+            }
+          })
+          .withFailureHandler(err => {
+            this.isSaving = false;
+            Swal.fire({
+              title: 'Error',
+              text: 'Terjadi kesalahan sistem: ' + err.message,
+              icon: 'error',
+              background: '#0f172a',
+              color: '#f87171'
+            });
+          })
+          .apiSaveHajiInputData(window.sessionToken, this.formData);
+      },
+
+      fetchJamaahList() {
+        this.isLoadingList = true;
+        google.script.run
+          .withSuccessHandler(res => {
+            this.jamaahList = res || [];
+            this.isLoadingList = false;
+            if (this.showChart) {
+              this.$nextTick(() => {
+                this.renderChart();
+              });
+            }
+          })
+          .withFailureHandler(err => {
+            this.isLoadingList = false;
+            console.error(err);
+          })
+          .apiGetHajiInputListData(window.sessionToken);
+      },
+
+      viewDetail(item) {
+        this.selectedDetail = item;
+      },
+
+      printJamaah(item) {
+        this.selectedDetail = item;
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      },
+
+      getCurrentHijriYear() {
+        if (this._currentHijriYear) return this._currentHijriYear;
+        try {
+          const str = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { year: 'numeric' }).format(new Date());
+          const match = str.match(/\d{4}/) || str.match(/\d+/);
+          if (match) {
+            this._currentHijriYear = parseInt(match[0], 10);
+            return this._currentHijriYear;
+          }
+        } catch (e) {}
+
+        try {
+          const str = new Intl.DateTimeFormat('id-u-ca-islamic', { year: 'numeric' }).format(new Date());
+          const match = str.match(/\d{4}/) || str.match(/\d+/);
+          if (match) {
+            this._currentHijriYear = parseInt(match[0], 10);
+            return this._currentHijriYear;
+          }
+        } catch (e2) {}
+
+        // Fallback aritmetika jika kalender Hijriah Intl tidak didukung
+        const y = new Date().getFullYear();
+        this._currentHijriYear = Math.round((y - 622) * 1.03068);
+        return this._currentHijriYear;
+      },
+
+      getMasaTunggu(estimasi) {
+        if (!estimasi) return null;
+        const str = String(estimasi).trim();
+        if (!str) return null;
+
+        // Ambil 4 digit dari kiri (tahun Hijriah)
+        let estHijri = null;
+        const first4 = str.substring(0, 4);
+        if (/^\d{4}$/.test(first4)) {
+          estHijri = parseInt(first4, 10);
+        } else {
+          const match = str.match(/\d{4}/);
+          if (match) estHijri = parseInt(match[0], 10);
+        }
+
+        if (!estHijri || isNaN(estHijri)) return null;
+
+        const currentHijri = this.getCurrentHijriYear();
+        const diff = estHijri - currentHijri;
+
+        if (diff > 0) return `${diff} Tahun`;
+        if (diff === 0) return '0 Tahun (Tahun Ini)';
+        return `Sudah Lewat (${diff} Thn)`;
+      },
+
+      editJamaah(item) {
+        this.resetForm();
+        this.formData['IDJamaah'] = item.IDJamaah || '';
+        this.formData['PIN'] = item.PIN || '3065';
+        this.formData['Travel'] = item.Travel || 'PT. FATH INDAH TRAVEL SERVICE';
+        this.formData['NoBPIH'] = item.NoBPIH || item.NoPorsi || '';
+        this.formData['TglInput'] = item.TglInput || '';
+        this.formData['Nomor SPPH'] = item.NoSPPH || '';
+        this.formData['TglSPPH'] = item.TglSPPH || '';
+        this.formData['Nomor KTP'] = item.NoKTP || '';
+        this.formData['Nama Lengkap'] = item.Nama || '';
+        this.formData['Nama Ayah Kandung'] = item.NamaOrtu || '';
+        this.formData['Tempat Lahir'] = item.TempatLahir || '';
+        this.formData['Tanggal Lahir'] = item.TanggalLahir || '';
+        this.formData['Umur'] = item.Umur || '';
+        this.formData['Jenis Kelamin'] = item.JenisKelamin || '';
+        this.formData['Kewarganegaraan'] = item.Kewarganegaraan || '';
+        this.formData['Alamat'] = item.Alamat || '';
+        this.formData['RT'] = item.RT || '';
+        this.formData['RW'] = item.RW || '';
+        this.formData['Desa/Kelurahan'] = item.DesaKel || '';
+        this.formData['Kecamatan'] = item.Kecamatan || '';
+        this.formData['Kabupaten/Kota'] = item.KabKota || '';
+        this.formData['Provinsi'] = item.NmProvinsi || '';
+        this.formData['Kode Pos'] = item.KodePos || '';
+        this.formData['No Telepon'] = item.NoHP || '';
+        this.formData['Pendidikan'] = item.Pendidikan || '';
+        this.formData['Pekerjaan'] = item.Pekerjaan || '';
+        this.formData['Pergi Haji'] = item.PergiHaji || '';
+        this.formData['Nama Mahram'] = item.Mahram || '';
+        this.formData['Hubungan Mahram'] = item.HubMahram || '';
+        this.formData['No Daftar Mahram'] = item.NoDaftarMahram || '';
+        this.formData['Golongan Darah'] = item.GolDarah || '';
+        this.formData['Status Perkawinan'] = item.StatusNikah || '';
+        this.formData['Kode Diagnosis'] = item.KodeDiagnosis || '';
+        this.formData['Rambut'] = item.Rambut || '';
+        this.formData['Alis'] = item.Alis || '';
+        this.formData['Hidung'] = item.Hidung || '';
+        this.formData['Muka'] = item.Muka || '';
+        this.formData.Tinggi = item.Tinggi || item['Tinggi (cm)'] || '';
+        this.formData.Berat = item.Berat || item['Berat (kg)'] || '';
+        this.formData['Jenis Program Haji'] = item.JenisHaji || '';
+        this.formData['Nama Paket Haji'] = item['Nama Paket Haji'] || '';
+        this.formData['Tipe Kamar'] = item['Tipe Kamar'] || '';
+        this.formData['Harga USD'] = item['Harga USD'] || '';
+        this.formData['Kurs Paket'] = item['Kurs Paket'] || '';
+        this.formData['Harga Rupiah'] = item['Harga Rupiah'] || '';
+        this.formData['Diskon USD'] = item['Diskon USD'] || '';
+        this.formData['Diskon Rupiah'] = item['Diskon Rupiah'] || '';
+        this.formData['Total Harga USD'] = item['Total Harga USD'] || '';
+        this.formData['Total Harga Rupiah'] = item['Total Harga Rupiah'] || '';
+        this.formData['Catatan Paket'] = item['Catatan Paket'] || '';
+        this.formData['Nama Agen'] = item['Nama Agen'] || '';
+        this.formData['No HP Agen'] = item['No HP Agen'] || '';
+        this.formData['Faedah USD'] = item['Faedah USD'] || '';
+        this.formData['Faedah Rupiah'] = item['Faedah Rupiah'] || '';
+        this.formData['Tanggal Bayar Agen'] = item['Tanggal Bayar Agen'] || '';
+        this.formData['Bank Agen'] = item['Bank Agen'] || '';
+        this.formData['Nomor Jurnal ErahHajj'] = item['Nomor Jurnal ErahHajj'] || '';
+        this.formData['Catatan Agen'] = item['Catatan Agen'] || '';
+        this.formData['DownPayment'] = item['DownPayment'] || '';
+        this.formData['nomor rekening agent'] = item['nomor rekening agent'] || '';
+        this.formData['Estimasi Keberangkatan'] = item['EstimasiBerangkat'] || '';
+        this.formData['Tgl Pengecekkan'] = item['TglEstimasi'] || '';
+
+        // Setup dropdowns
+        const progOpts = ['Haji Terencana', 'Pembiayaan Haji', 'Setoran Awal'];
+        if (this.formData['Jenis Program Haji'] && !progOpts.includes(this.formData['Jenis Program Haji'])) {
+          this.formData['Program Haji Dropdown'] = 'Lainnya';
+        } else {
+          this.formData['Program Haji Dropdown'] = this.formData['Jenis Program Haji'];
+        }
+
+        const kamarOpts = ['Quad', 'Double', 'Triple'];
+        if (this.formData['Tipe Kamar'] && !kamarOpts.includes(this.formData['Tipe Kamar'])) {
+          this.formData['Tipe Kamar Dropdown'] = 'Lainnya';
+        } else {
+          this.formData['Tipe Kamar Dropdown'] = this.formData['Tipe Kamar'];
+        }
+
+        this.activeTab = 'input';
+      },
+
+      deleteJamaah(item) {
+        console.log("Delete button clicked for:", item);
+        let identifier = item.IDJamaah || item.NoBPIH || item.NoPorsi || item.NoSPPH || item.NoKTP;
+
+        if (!identifier) {
+          alert('Data ini tidak memiliki referensi ID/KTP yang bisa digunakan untuk menghapus.');
+          return;
+        }
+
+        if (confirm('Anda yakin ingin menghapus data jamaah: ' + (item.Nama || identifier) + '?')) {
+          this.isLoadingList = true;
+          google.script.run
+            .withSuccessHandler(res => {
+              if (res && res.success) {
+                Swal.fire({ title: 'Dihapus', text: res.message, icon: 'success', background: '#0f172a', color: '#34d399' });
+                this.fetchJamaahList();
+              } else {
+                Swal.fire({ title: 'Gagal', text: res?.message || 'Gagal menghapus data', icon: 'error', background: '#0f172a', color: '#f87171' });
+                this.isLoadingList = false;
+              }
+            })
+            .withFailureHandler(err => {
+              Swal.fire({ title: 'Error', text: err.message, icon: 'error', background: '#0f172a', color: '#f87171' });
+              this.isLoadingList = false;
+            })
+            .apiDeleteHajiInputData(window.sessionToken, identifier);
+        }
+      },
+
+      // --- PDF AUTO-FILL LOGIC ---
+      isParsingPDF: false,
+      pdfFileName: '',
+
+      async handlePDFUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        this.isParsingPDF = true;
+        this.pdfFileName = file.name;
+        
+        Swal.fire({
+          title: 'Membaca Dokumen...',
+          text: 'Sedang mengekstrak teks menggunakan Google Drive OCR (mungkin butuh beberapa detik)...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); },
+          background: '#0f172a',
+          color: '#f8fafc'
+        });
+
+        try {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64Data = e.target.result.split(',')[1];
+            const mimeType = file.type || 'application/pdf';
+            
+            google.script.run
+              .withSuccessHandler(res => {
+                this.isParsingPDF = false;
+                event.target.value = ''; // Reset input file
+                
+                if (!res.success) {
+                  Swal.fire({ title: 'Gagal Ekstrak', html: res.message, icon: 'error', background: '#0f172a', color: '#f87171' });
+                  return;
+                }
+                
+                const extractedData = res.data;
+                if (Object.keys(extractedData).length === 0) {
+                  Swal.fire({
+                    title: 'Tidak Ada Data Ditemukan',
+                    text: 'Dokumen berhasil dibaca, tetapi tidak ditemukan pola KTP/Porsi/SPPH yang valid.',
+                    icon: 'warning',
+                    background: '#0f172a',
+                    color: '#fbbf24'
+                  });
+                  return;
+                }
+
+                let htmlContent = '<div class="text-left space-y-3 mt-4 text-sm">';
+                for (const [key, value] of Object.entries(extractedData)) {
+                  htmlContent += `
+                    <div class="flex justify-between border-b border-slate-700/50 pb-1">
+                      <span class="text-slate-400 font-bold">${key}:</span>
+                      <span class="text-emerald-400 font-mono">${value}</span>
+                    </div>
+                  `;
+                }
+                htmlContent += '</div><p class="text-xs text-slate-500 mt-4 text-center">Apakah Anda ingin memasukkan data ini ke dalam formulir?</p>';
+
+                Swal.fire({
+                  title: 'Hasil Scan OCR',
+                  html: htmlContent,
+                  icon: 'info',
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  showCancelButton: true,
+                  confirmButtonColor: '#10b981',
+                  cancelButtonColor: '#64748b',
+                  confirmButtonText: 'Ya, Isi Form!',
+                  cancelButtonText: 'Batal'
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    for (const [key, value] of Object.entries(extractedData)) {
+                      this.formData[key] = value;
+                    }
+                    Swal.fire({ title: 'Berhasil', text: 'Data telah dimasukkan.', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, background: '#0f172a', color: '#34d399' });
+                  }
+                });
+              })
+              .withFailureHandler(err => {
+                console.error(err);
+                this.isParsingPDF = false;
+                event.target.value = '';
+                Swal.fire({ title: 'Gagal', text: 'Kesalahan saat menghubungi server: ' + err.message, icon: 'error', background: '#0f172a', color: '#f87171' });
+              })
+              .processDocumentWithDriveOCR(base64Data, mimeType, file.name);
+          };
+          reader.readAsDataURL(file);
+        } catch (err) {
+          console.error(err);
+          this.isParsingPDF = false;
+          event.target.value = '';
+          Swal.fire({ title: 'Error', text: 'Gagal membaca file: ' + err.message, icon: 'error', background: '#0f172a', color: '#f87171' });
+        }
+      }
+    };
+  }
+</script>

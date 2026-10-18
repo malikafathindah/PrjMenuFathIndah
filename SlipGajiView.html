@@ -1,0 +1,273 @@
+<!-- ============================================================================ -->
+<!-- LIHAT SLIP GAJI VIEW COMPONENT (SlipGajiView.html)                            -->
+<!-- ============================================================================ -->
+<!-- Modul khusus menampilkan & pratinjau dokumen Slip Gaji karyawan (mod_slip_gaji)-->
+<!-- Kategori: Keuangan / Karyawan                                                 -->
+
+<div x-show="currentModule === 'mod_slip_gaji' || isSlipGajiModule(currentModule, currentModuleName)"
+  class="space-y-4" x-transition x-cloak>
+
+  <!-- 1. HEADER BAR & TOOLBAR SLIP GAJI -->
+  <div
+    class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+    <div class="flex items-center gap-3.5">
+      <div
+        class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-600 p-0.5 shadow-lg shadow-emerald-500/20 shrink-0">
+        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-file-invoice-dollar text-xl"></i>
+        </div>
+      </div>
+      <div>
+        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2 tracking-tight">
+          <span>Lihat Slip Gaji</span>
+          <span
+            class="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider">mod_slip_gaji</span>
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Dokumen Slip Gaji Otomatis Terhubung dengan Google Drive Perusahaan</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Action Toolbar & Info Badge -->
+    <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+
+
+      <!-- Refresh Data Button -->
+      <button type="button" @click="loadSlipGajiData(true, true)" :disabled="isSlipGajiLoading"
+        class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+        title="Refresh Data Slip Gaji dari Drive">
+        <i class="fa-solid fa-rotate-right text-cyan-400" :class="isSlipGajiLoading ? 'animate-spin' : ''"></i>
+        <span>Refresh Data</span>
+      </button>
+
+      <!-- Reset Tampilan Button -->
+      <button type="button" @click="clearSlipGajiSelection()"
+        class="hidden md:flex px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all items-center gap-2 shadow-sm"
+        title="Clear / Reset Tampilan Dokumen PDF">
+        <i class="fa-solid fa-eye-slash"></i>
+        <span>Reset Tampilan</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. USER INFO BANNER -->
+  <div
+    class="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 border border-emerald-500/20 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-sm font-bold">
+        <i class="fa-solid fa-user-check"></i>
+      </div>
+      <div class="text-xs">
+        <span class="text-slate-400">Pengguna Terdaftar:</span>
+        <strong class="text-emerald-300 font-semibold ml-1" x-text="currentUser.fullName || currentUser.username || 'Karyawan'">-</strong>
+        <span class="text-slate-500 mx-1.5">•</span>
+        <span class="text-slate-400">Role:</span>
+        <span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-md text-[10px] font-mono border border-slate-700 uppercase" x-text="currentUser.role || 'Staff'">Staff</span>
+      </div>
+    </div>
+
+    <div class="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+      <i class="fa-solid fa-folder-open text-emerald-400"></i>
+      <span>Menampilkan dokumen Slip Gaji sesuai nama akun</span>
+    </div>
+  </div>
+
+  <!-- 3. MAIN SPLIT VIEW LAYOUT: LIST DAFTAR SLIP (LEFT) & PDF PREVIEWER (RIGHT) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+    <!-- CARD KIRI: DAFTAR SLIP GAJI KARYAWAN (5 COLS) -->
+    <div class="lg:col-span-5 space-y-3" :class="{'hidden lg:block': selectedSlipGaji, 'block': !selectedSlipGaji}">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col h-full min-h-[600px]">
+        <!-- Card Header & Search -->
+        <div class="p-3.5 bg-slate-950/80 border-b border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+              <i class="fa-solid fa-list-ul text-emerald-400"></i>
+              <span>Daftar Slip Gaji</span>
+            </h3>
+            <span class="text-[11px] text-slate-400 font-mono">
+              Total: <strong class="text-emerald-400" x-text="filteredSlipGajiList().length">0</strong> Dokumen
+            </span>
+          </div>
+
+          <!-- Input Search File Slip -->
+          <div class="relative w-full">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-emerald-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" x-model="slipGajiSearchQuery" placeholder="Cari Berkas, Bulan, Tahun..."
+              class="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition-all font-medium">
+          </div>
+        </div>
+
+        <!-- File List Body -->
+        <div class="p-3 overflow-y-auto flex-1 max-h-[calc(100vh-280px)] scrollbar-thin space-y-2.5">
+          
+          <!-- State Loading -->
+          <template x-if="isSlipGajiLoading">
+            <div class="py-16 text-center space-y-3">
+              <div class="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin mx-auto"></div>
+              <p class="text-xs text-slate-400">Membaca dokumen Slip Gaji dari Google Drive...</p>
+            </div>
+          </template>
+
+          <!-- State Kosong / Tidak Ditemukan -->
+          <template x-if="!isSlipGajiLoading && filteredSlipGajiList().length === 0">
+            <div class="py-16 px-4 text-center space-y-3 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+              <div class="w-12 h-12 rounded-2xl bg-slate-800/80 text-slate-500 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-folder-open"></i>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-300">Slip Gaji belum tersedia</h4>
+                <p class="text-[11px] text-slate-400 mt-1">Belum ada berkas Slip Gaji PDF untuk nama <strong class="text-emerald-400" x-text="currentUser.fullName || currentUser.username || 'Anda'"></strong> pada folder Google Drive.</p>
+              </div>
+              <button type="button" @click="loadSlipGajiData(true, true)"
+                class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold transition-all">
+                <i class="fa-solid fa-rotate-right mr-1"></i> Coba Refresh Lagi
+              </button>
+            </div>
+          </template>
+
+          <!-- Loop Items Slip Gaji -->
+          <template x-if="!isSlipGajiLoading && filteredSlipGajiList().length > 0">
+            <div class="space-y-2">
+              <template x-for="(item, idx) in filteredSlipGajiList()" :key="item.id || idx">
+                <div @click="selectSlipGaji(item)"
+                  :class="selectedSlipGaji && selectedSlipGaji.id === item.id 
+                    ? 'bg-emerald-950/40 border-emerald-400/60 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/50' 
+                    : 'bg-slate-950/60 hover:bg-slate-800/60 border-slate-800/90 hover:border-slate-700'"
+                  class="p-3 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between gap-2.5">
+                  
+                  <div class="flex items-start gap-3">
+                    <!-- PDF File Icon -->
+                    <div class="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base shrink-0 group-hover:scale-105 transition-transform">
+                      <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                      <h4 class="text-xs font-bold text-slate-100 truncate group-hover:text-emerald-300 transition-colors"
+                        x-text="item.fileName || 'Slip Gaji PDF'"></h4>
+                      <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-1 font-mono">
+                        <span class="flex items-center gap-1">
+                          <i class="fa-regular fa-clock text-[10px] text-emerald-400"></i>
+                          <span x-text="item.created || '-'"></span>
+                        </span>
+                        <span>•</span>
+                        <span x-text="item.size || 'PDF'"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Footer Actions -->
+                  <div class="flex items-center justify-between border-t border-slate-800/80 pt-2 text-[11px]">
+                    <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                      <i class="fa-solid fa-eye text-[10px]"></i>
+                      <span>Klik untuk Pratinjau</span>
+                    </span>
+                    <div class="flex items-center gap-1.5" @click.stop>
+                      <a :href="item.fileUrl || item.embedUrl" target="_blank" rel="noopener"
+                        class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition-colors" title="Buka di Google Drive">
+                        <i class="fa-solid fa-up-right-from-square"></i>
+                      </a>
+                      <a :href="item.downloadUrl || item.fileUrl" target="_blank" download
+                        class="px-2 py-0.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded text-[10px] transition-colors" title="Download PDF">
+                        <i class="fa-solid fa-download mr-1"></i> PDF
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </template>
+            </div>
+          </template>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD KANAN: PRATINJAU DOKUMEN SLIP GAJI PDF (7 COLS) -->
+    <div class="lg:col-span-7" :class="{'hidden lg:block': !selectedSlipGaji, 'block': selectedSlipGaji}">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[600px]">
+        
+        <!-- Card Header Previewer -->
+        <div class="p-3.5 bg-slate-950/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-xs shrink-0">
+              <i class="fa-solid fa-file-contract"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-xs font-bold text-slate-100 truncate" x-text="selectedSlipGaji ? selectedSlipGaji.fileName : 'Pratinjau Dokumen Slip Gaji'">
+                Pratinjau Dokumen Slip Gaji
+              </h3>
+              <p class="text-[10px] text-slate-400 font-mono truncate" x-text="selectedSlipGaji ? ('Tanggal: ' + selectedSlipGaji.created) : 'Pilih dokumen dari daftar di sebelah kiri'">
+                Pilih dokumen dari daftar di sebelah kiri
+              </p>
+            </div>
+          </div>
+
+          <!-- Top Action Buttons for Selected File -->
+          <template x-if="selectedSlipGaji">
+            <div class="flex items-center gap-2">
+              <a :href="selectedSlipGaji.fileUrl" target="_blank" rel="noopener"
+                class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square text-emerald-400"></i>
+                <span class="hidden sm:inline">Buka Tab Baru</span>
+              </a>
+              <a :href="selectedSlipGaji.downloadUrl || selectedSlipGaji.fileUrl" target="_blank" download
+                class="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md flex items-center gap-1.5">
+                <i class="fa-solid fa-download"></i>
+                <span class="hidden sm:inline">Download PDF</span>
+              </a>
+              <button type="button" @click="clearSlipGajiSelection()"
+                class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
+                title="Tutup / Kembali ke Daftar">
+                <i class="fa-solid fa-arrow-left lg:hidden"></i>
+                <i class="fa-solid fa-xmark hidden lg:inline-block"></i>
+                <span class="hidden lg:inline">Tutup Preview</span>
+                <span class="lg:hidden">Kembali</span>
+              </button>
+            </div>
+          </template>
+        </div>
+
+        <!-- Preview Viewer Body -->
+        <div class="p-3 bg-slate-950/60 flex-1 flex flex-col items-center justify-center relative min-h-[500px]">
+          
+          <!-- View 1: When File is Selected (Embedded PDF iframe) -->
+          <template x-if="selectedSlipGaji && selectedSlipGaji.embedUrl">
+            <div class="w-full h-full min-h-[580px] flex flex-col">
+              <iframe :src="getEmbedUrl(selectedSlipGaji.embedUrl)"
+                class="w-full h-full min-h-[580px] rounded-xl border border-slate-800/80 bg-slate-900 shadow-inner"
+                allow="autoplay"></iframe>
+            </div>
+          </template>
+
+          <!-- View 2: Placeholder When No File Selected -->
+          <template x-if="!selectedSlipGaji || !selectedSlipGaji.embedUrl">
+            <div class="py-24 px-6 text-center space-y-4 max-w-md mx-auto">
+              <div class="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 mx-auto text-3xl shadow-inner">
+                <i class="fa-solid fa-file-pdf"></i>
+              </div>
+              <div class="space-y-1.5">
+                <h4 class="text-sm font-bold text-slate-200">Pratinjau Dokumen Slip Gaji</h4>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Silakan klik salah satu item dokumen Slip Gaji pada daftar di sebelah kiri untuk menampilkan berkas PDF secara langsung di kartu ini.
+                </p>
+              </div>
+              <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-[11px] text-emerald-400 font-mono">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Mendukung Tampilan PDF Interaktif & Download</span>
+              </div>
+            </div>
+          </template>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>

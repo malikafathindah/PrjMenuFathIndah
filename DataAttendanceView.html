@@ -1,0 +1,333 @@
+<!-- ============================================================================ -->
+<!-- DATA ATTENDANCE VIEW COMPONENT (DataAttendanceView.html) -->
+<!-- ============================================================================ -->
+<div x-show="isDataAttendanceModule(currentModule, currentModuleName)" class="space-y-3 w-full" x-transition>
+  
+  <!-- Top Filter & Dynamic View Mode Control Bar -->
+  <div class="bg-slate-900/90 border border-slate-800 p-2 sm:p-2.5 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 shadow-lg shrink-0">
+    
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+      <!-- Search Input Nama Karyawan -->
+      <div class="relative w-full sm:w-64">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-cyan-400">
+          <i class="fa-solid fa-magnifying-glass text-xs"></i>
+        </span>
+        <input type="text" x-model.debounce.250ms="dataAttendanceSearch" placeholder="Cari Nama Karyawan, Tipe..."
+          class="w-full pl-8 pr-3 py-2 sm:py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all shadow-inner">
+      </div>
+
+      <!-- Date Picker Filter -->
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <span class="text-xs text-slate-400 font-semibold whitespace-nowrap hidden sm:inline-block">Filter Tanggal:</span>
+        <input type="date" x-model="dataAttendanceDateFilter"
+          class="w-full sm:w-auto px-3 py-2 sm:py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-xs text-cyan-300 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all shadow-inner">
+      </div>
+    </div>
+
+    <!-- Dynamic View Switcher & Action Buttons -->
+    <div class="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+      <!-- DYNAMIC MOBILE VIEW MODE TOGGLE SWITCH (Tabel / Kartu) -->
+      <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+        <button @click="dataAttendanceMobileViewMode = 'table'"
+          :class="dataAttendanceMobileViewMode === 'table' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold' : 'text-slate-400 hover:text-slate-200'"
+          class="px-2.5 py-1 rounded-lg text-[11px] transition-all flex items-center gap-1.5 shadow-sm"
+          title="Tampilan Tabel Matrix (Scroll Kiri-Kanan)">
+          <i class="fa-solid fa-table-cells text-xs"></i>
+          <span>Tabel</span>
+        </button>
+        <button @click="dataAttendanceMobileViewMode = 'cards'"
+          :class="dataAttendanceMobileViewMode === 'cards' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold' : 'text-slate-400 hover:text-slate-200'"
+          class="px-2.5 py-1 rounded-lg text-[11px] transition-all flex items-center gap-1.5 shadow-sm"
+          title="Tampilan Kartu Stream Mobile">
+          <i class="fa-solid fa-address-card text-xs"></i>
+          <span>Kartu</span>
+        </button>
+      </div>
+
+      <!-- Reset Filter Button -->
+      <button @click="dataAttendanceSearch = ''; dataAttendanceDateFilter = ''"
+        x-show="dataAttendanceSearch || dataAttendanceDateFilter" x-transition
+        class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all flex items-center gap-1 border border-slate-700 shrink-0">
+        <i class="fa-solid fa-filter-circle-xmark text-cyan-400"></i>
+        <span class="hidden sm:inline">Reset</span>
+      </button>
+
+      <!-- Tombol Refresh Log -->
+      <button @click="loadDataAttendance()" :disabled="loading"
+        class="flex-1 sm:flex-initial px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold rounded-xl text-xs transition-all shrink-0 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
+        title="Refresh Log Data Absensi">
+        <i class="fa-solid fa-rotate text-cyan-400" :class="{ 'fa-spin': loading }"></i>
+        <span class="hidden sm:inline">Refresh</span>
+      </button>
+
+      <!-- Counter Badge -->
+      <span class="text-xs text-slate-400 font-mono shrink-0 bg-slate-950/60 border border-slate-800 px-2.5 py-1.5 rounded-xl">
+        Total: <strong class="text-cyan-400" x-text="filteredDataAttendanceRows().length">0</strong>
+      </span>
+    </div>
+  </div>
+
+  <!-- MODE 1: DYNAMIC HORIZONTAL SCROLLABLE TABLE (CLEAR & WIDE ON MOBILE) -->
+  <div x-show="dataAttendanceMobileViewMode === 'table'"
+    class="bg-slate-900/90 border border-cyan-500/20 rounded-2xl overflow-hidden shadow-[0_20px_50px_-15px_rgba(0,0,0,0.8)] flex-1 flex flex-col min-h-0"
+    x-transition>
+    
+    <!-- Mobile Horizontal Scroll Hint Bar (Khusus Layar HP) -->
+    <div class="sm:hidden px-3 py-1.5 bg-cyan-950/60 border-b border-cyan-500/30 text-[10px] text-cyan-300 flex items-center justify-between font-mono shrink-0 select-none">
+      <span class="flex items-center gap-1.5 font-semibold">
+        <i class="fa-solid fa-arrows-left-right text-cyan-400 animate-pulse"></i>
+        <span>Geser Kiri-Kanan untuk Kolom Lengkap</span>
+      </span>
+      <span class="text-slate-400 text-[9px] bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">NO & Nama Lock</span>
+    </div>
+
+    <!-- Table Container (Horizontal Scroll Mulus - Min Width Lebar) -->
+    <div class="w-full overflow-x-auto flex-1 max-h-[calc(100vh-140px)] scrollbar-thin">
+      <table class="w-full text-left text-xs border-collapse min-w-[750px] table-fixed">
+
+        <!-- Table Header (Sticky Top & Left Columns) -->
+        <thead
+          class="sticky top-0 z-20 text-slate-200 font-bold uppercase tracking-wider select-none bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 text-cyan-300 border-b border-cyan-500/40 text-[11px]">
+          <tr>
+            <!-- Column 1: NO (Sticky Left 0) -->
+            <th
+              class="w-[42px] py-2.5 px-2 text-center border-r border-cyan-500/30 bg-slate-950/95 sticky left-0 z-30 shadow-[2px_0_6px_rgba(0,0,0,0.6)]">
+              NO</th>
+
+            <!-- Column 2: TANGGAL -->
+            <th @click="toggleDataAttendanceSort('rawTimestamp')"
+              class="w-[130px] py-2.5 px-2 border-r border-cyan-500/30 text-center cursor-pointer hover:bg-cyan-900/40 transition-colors whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1.5">
+                <span>TANGGAL</span>
+                <span class="text-[10px] text-cyan-400" x-show="dataAttendanceSortCol === 'rawTimestamp'"
+                  x-text="dataAttendanceSortDir === 'asc' ? '▲' : '▼'"></span>
+              </div>
+            </th>
+
+            <!-- Column 3: JAM -->
+            <th @click="toggleDataAttendanceSort('rawTimestamp')"
+              class="w-[95px] py-2.5 px-2 border-r border-cyan-500/30 cursor-pointer hover:bg-cyan-900/40 transition-colors text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1">
+                <span>JAM</span>
+                <span class="text-[10px] text-cyan-400" x-show="dataAttendanceSortCol === 'rawTimestamp'"
+                  x-text="dataAttendanceSortDir === 'asc' ? '▲' : '▼'"></span>
+              </div>
+            </th>
+
+            <!-- Column 4: NAMA KARYAWAN (Sticky Left 42px - Lebar & Jelas) -->
+            <th @click="toggleDataAttendanceSort('namaKaryawan')"
+              class="w-[170px] sm:w-auto py-2.5 px-3 border-r border-cyan-500/30 cursor-pointer hover:bg-cyan-900/40 transition-colors text-left bg-slate-950/95 sticky left-[42px] z-30 shadow-[2px_0_6px_rgba(0,0,0,0.6)]">
+              <div class="flex items-center gap-1">
+                <span>NAMA KARYAWAN</span>
+                <span class="text-[10px] text-cyan-400" x-show="dataAttendanceSortCol === 'namaKaryawan'"
+                  x-text="dataAttendanceSortDir === 'asc' ? '▲' : '▼'"></span>
+              </div>
+            </th>
+
+            <!-- Column 5: TIPE -->
+            <th @click="toggleDataAttendanceSort('tipe')"
+              class="w-[110px] py-2.5 px-2 border-r border-cyan-500/30 cursor-pointer hover:bg-cyan-900/40 transition-colors text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1">
+                <span>TIPE</span>
+                <span class="text-[10px] text-cyan-400" x-show="dataAttendanceSortCol === 'tipe'"
+                  x-text="dataAttendanceSortDir === 'asc' ? '▲' : '▼'"></span>
+              </div>
+            </th>
+
+            <!-- Column 6: KODE -->
+            <th @click="toggleDataAttendanceSort('kode')"
+              class="w-[80px] py-2.5 px-2 border-r border-cyan-500/30 cursor-pointer hover:bg-cyan-900/40 transition-colors text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1">
+                <span>KODE</span>
+                <span class="text-[10px] text-cyan-400" x-show="dataAttendanceSortCol === 'kode'"
+                  x-text="dataAttendanceSortDir === 'asc' ? '▲' : '▼'"></span>
+              </div>
+            </th>
+
+            <!-- Column 7: PETA -->
+            <th class="w-[120px] py-2.5 px-2 text-center border-r border-cyan-500/30 whitespace-nowrap">PETA</th>
+          </tr>
+        </thead>
+
+        <!-- Data Rows -->
+        <tbody class="divide-y divide-slate-800/80 text-slate-300 font-medium text-xs">
+
+          <!-- Loading State -->
+          <template x-if="loading">
+            <tr>
+              <td colspan="7" class="py-12 text-center text-slate-400 bg-slate-950/40">
+                <i class="fa-solid fa-circle-notch fa-spin text-2xl text-cyan-400 mb-2"></i>
+                <p class="text-xs font-semibold text-slate-300">Memuat log dari Sheet Data Absensi...</p>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Empty State -->
+          <template x-if="!loading && filteredDataAttendanceRows().length === 0">
+            <tr>
+              <td colspan="7" class="py-12 text-center text-slate-500 bg-slate-950/40">
+                <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-600"></i>
+                <p class="text-xs font-semibold text-slate-400">Tidak ada log data absensi ditemukan sesuai filter.</p>
+              </td>
+            </tr>
+          </template>
+
+          <!-- Rendered Log Rows -->
+          <template x-for="(row, idx) in filteredDataAttendanceRows()" :key="row.id || idx">
+            <tr class="hover:bg-cyan-950/30 transition-all duration-200 group">
+
+              <!-- NO (Sticky Left 0) -->
+              <td
+                class="py-2 px-2 text-center border-r border-slate-800 font-mono text-slate-400 group-hover:text-cyan-400 bg-slate-950/95 sticky left-0 z-10 shadow-[2px_0_6px_rgba(0,0,0,0.6)]"
+                x-text="idx + 1"></td>
+
+              <!-- TANGGAL -->
+              <td
+                class="py-2 px-2 border-r border-slate-800 font-medium text-slate-200 text-center whitespace-nowrap"
+                x-text="row.tanggal || '-'"></td>
+
+              <!-- JAM -->
+              <td
+                class="py-2 px-2 border-r border-slate-800 font-mono text-center text-cyan-300 font-semibold whitespace-nowrap"
+                x-text="row.jam || '-'"></td>
+
+              <!-- NAMA KARYAWAN (Sticky Left 42px) -->
+              <td
+                class="py-2 px-3 border-r border-slate-800 font-semibold text-slate-100 truncate bg-slate-950/95 sticky left-[42px] z-10 shadow-[2px_0_6px_rgba(0,0,0,0.6)]"
+                :title="row.namaKaryawan || ''" x-text="row.namaKaryawan || '-'"></td>
+
+              <!-- TIPE -->
+              <td class="py-2 px-2 border-r border-slate-800 text-center whitespace-nowrap">
+                <span class="px-2.5 py-0.5 rounded-md text-[10px] shadow-sm"
+                  :class="getTipeBadgeClass(row.tipe)"
+                  x-text="formatTipeAttendance(row.tipe)">
+                </span>
+              </td>
+
+              <!-- KODE -->
+              <td class="py-2 px-2 border-r border-slate-800 text-center whitespace-nowrap">
+                <span class="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold" :class="{
+                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': (row.kode === 'H'),
+                    'bg-amber-500/20 text-amber-400 border border-amber-500/40': (row.kode === 'S'),
+                    'bg-blue-500/20 text-blue-400 border border-blue-500/40': (row.kode === 'I'),
+                    'bg-rose-500/20 text-rose-400 border border-rose-500/40': (row.kode === 'A'),
+                    'bg-pink-500/20 text-pink-400 border border-pink-500/40': (row.kode === 'P'),
+                    'bg-white/20 text-white border border-white/40': (row.kode === 'C' || row.kode === 'Off'),
+                    'text-slate-400': !row.kode
+                  }" x-text="row.kode || '-'">
+                </span>
+              </td>
+
+              <!-- PETA (Google Maps Button) -->
+              <td class="py-2 px-2 text-center border-r border-slate-800 whitespace-nowrap">
+                <template x-if="row.linkMaps && row.linkMaps.includes('http')">
+                  <a :href="row.linkMaps" target="_blank"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-[10px] font-semibold transition-all hover:scale-105 active:scale-95 shadow-sm">
+                    <i class="fa-solid fa-map-location-dot text-[10px] text-cyan-400"></i>
+                    <span>Buka Peta</span>
+                  </a>
+                </template>
+                <template x-if="!row.linkMaps || !row.linkMaps.includes('http')">
+                  <span class="text-slate-600 text-[10px] font-mono">-</span>
+                </template>
+              </td>
+
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Table Footer Status Bar -->
+    <div
+      class="px-4 py-2 bg-slate-950 border-t border-slate-800/80 text-[11px] text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-2 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+        <span>Format Tanggal: <strong>dd mmmm yyyy</strong> | Jam: <strong>hh:mm:ss</strong></span>
+      </div>
+      <div class="text-slate-300 font-mono text-[11px]">
+        Menampilkan <strong class="text-cyan-400" x-text="filteredDataAttendanceRows().length">0</strong> dari
+        <strong class="text-slate-400" x-text="(dataAttendanceList || []).length">0</strong> data log
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE 2: DYNAMIC MOBILE STREAM CARDS VIEW -->
+  <div x-show="dataAttendanceMobileViewMode === 'cards'"
+    class="space-y-3 overflow-y-auto flex-1 max-h-[calc(100vh-175px)] pr-0.5"
+    x-transition>
+    <!-- Loading State Mobile Cards -->
+    <template x-if="loading">
+      <div class="p-8 text-center bg-slate-900/90 border border-slate-800 rounded-2xl">
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl text-cyan-400 mb-2"></i>
+        <p class="text-xs font-semibold text-slate-300">Memuat log dari Sheet Data Absensi...</p>
+      </div>
+    </template>
+
+    <!-- Empty State Mobile Cards -->
+    <template x-if="!loading && filteredDataAttendanceRows().length === 0">
+      <div class="p-8 text-center bg-slate-900/90 border border-slate-800 rounded-2xl">
+        <i class="fa-solid fa-folder-open text-3xl text-slate-600 mb-2"></i>
+        <p class="text-xs font-semibold text-slate-400">Tidak ada log data absensi ditemukan sesuai filter.</p>
+      </div>
+    </template>
+
+    <!-- Rendered Mobile Log Cards -->
+    <template x-for="(row, idx) in filteredDataAttendanceRows()" :key="row.id || idx">
+      <div class="bg-slate-900/90 border border-slate-800/90 hover:border-cyan-500/40 rounded-2xl p-3.5 shadow-md space-y-2.5 transition-all">
+        <!-- Header Card: Nama & Badges -->
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-[10px] font-mono font-bold flex items-center justify-center shrink-0" x-text="idx + 1"></span>
+            <h4 class="text-xs font-bold text-slate-100 truncate" x-text="row.namaKaryawan || '-'"></h4>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <!-- Badge Tipe -->
+            <span class="px-2 py-0.5 rounded-md text-[10px] shadow-sm"
+              :class="getTipeBadgeClass(row.tipe)"
+              x-text="formatTipeAttendance(row.tipe)">
+            </span>
+            <!-- Badge Kode -->
+            <span class="px-1.5 py-0.5 rounded-md font-mono text-[10px] font-bold" :class="{
+                'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': (row.kode === 'H'),
+                'bg-amber-500/20 text-amber-400 border border-amber-500/40': (row.kode === 'S'),
+                'bg-blue-500/20 text-blue-400 border border-blue-500/40': (row.kode === 'I'),
+                'bg-rose-500/20 text-rose-400 border border-rose-500/40': (row.kode === 'A'),
+                'bg-pink-500/20 text-pink-400 border border-pink-500/40': (row.kode === 'P'),
+                'bg-white/20 text-white border border-white/40': (row.kode === 'C' || row.kode === 'Off'),
+                'text-slate-400': !row.kode
+              }" x-text="row.kode || '-'">
+            </span>
+          </div>
+        </div>
+
+        <!-- Info Grid: Tanggal & Jam -->
+        <div class="grid grid-cols-2 gap-2 text-[11px]">
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
+            <i class="fa-regular fa-calendar-check text-cyan-400 text-xs shrink-0"></i>
+            <div class="min-w-0">
+              <span class="text-[9px] text-slate-500 uppercase block font-semibold">Tanggal</span>
+              <span class="text-slate-200 font-medium truncate block" x-text="row.tanggal || '-'"></span>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
+            <i class="fa-regular fa-clock text-cyan-400 text-xs shrink-0"></i>
+            <div class="min-w-0">
+              <span class="text-[9px] text-slate-500 uppercase block font-semibold">Jam</span>
+              <span class="text-cyan-300 font-mono font-bold truncate block" x-text="row.jam || '-'"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer: Maps Link Button Mobile -->
+        <template x-if="row.linkMaps && row.linkMaps.includes('http')">
+          <a :href="row.linkMaps" target="_blank" class="w-full py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98">
+            <i class="fa-solid fa-map-location-dot text-xs text-cyan-400"></i>
+            <span>Buka Peta Lokasi Google Maps</span>
+          </a>
+        </template>
+      </div>
+    </template>
+  </div>
+
+</div>

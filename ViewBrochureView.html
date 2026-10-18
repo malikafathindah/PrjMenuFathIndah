@@ -1,0 +1,120 @@
+<div x-show="currentModule === 'mod_view_brochure'" class="h-[calc(100vh-140px)] flex flex-col bg-slate-950 rounded-2xl shadow-2xl p-4 md:p-6 border border-slate-800 text-slate-300" x-data="viewBrochureManager()">
+  
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-inner mb-4">
+    <div>
+      <h2 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500 flex items-center gap-3 uppercase tracking-wider">
+        <i class="fa-solid fa-images text-amber-400"></i> Lihat Brosur
+      </h2>
+      <p class="text-xs text-slate-500 uppercase tracking-widest mt-1">Modul Marketing / Brosur Wilayah</p>
+    </div>
+    
+    <!-- Dropdown Filter -->
+    <div class="flex items-center gap-3 w-full md:w-auto">
+      <select x-model="selectedRegion" @change="fetchBrochures()" class="w-full md:w-64 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+        <option value="" disabled>-- Pilih Wilayah --</option>
+        <template x-for="region in regions" :key="region.id">
+          <option :value="region.id" x-text="region.name"></option>
+        </template>
+      </select>
+      <button @click="fetchBrochures()" :disabled="!selectedRegion || isLoading" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg transition-colors flex items-center gap-2">
+        <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div class="flex-1 overflow-y-auto bg-slate-900/50 rounded-xl border border-slate-800 p-4 md:p-6">
+    
+    <!-- Empty State -->
+    <template x-if="!isLoading && (!files || files.length === 0)">
+      <div class="h-full flex flex-col items-center justify-center text-slate-500">
+        <i class="fa-solid fa-folder-open text-6xl mb-4 opacity-50"></i>
+        <p class="text-lg font-semibold uppercase tracking-widest" x-text="selectedRegion ? 'Tidak ada brosur ditemukan' : 'Pilih wilayah untuk melihat brosur'"></p>
+      </div>
+    </template>
+    
+    <!-- Loading State -->
+    <template x-if="isLoading">
+      <div class="h-full flex flex-col items-center justify-center text-emerald-500">
+        <i class="fa-solid fa-circle-notch fa-spin text-5xl mb-4 text-emerald-500"></i>
+        <p class="text-sm font-semibold uppercase tracking-widest animate-pulse text-amber-400">Memuat Data Brosur...</p>
+      </div>
+    </template>
+
+    <!-- Grid Layout for Thumbnails -->
+    <div x-show="!isLoading && files.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+      <template x-for="file in files" :key="file.id">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg group hover:-translate-y-1 hover:shadow-emerald-500/20 transition-all duration-300 flex flex-col">
+          
+          <!-- Thumbnail Image -->
+          <a :href="file.url" target="_blank" class="block aspect-[3/4] overflow-hidden bg-slate-900 relative">
+            <img :src="file.thumbnail" alt="Thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" @error="$el.src='https://ui-avatars.com/api/?name=File&background=1e293b&color=94a3b8&size=400'">
+            
+            <!-- Hover Overlay -->
+            <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-sm">
+              <i class="fa-solid fa-arrow-up-right-from-square text-white text-3xl drop-shadow-lg"></i>
+            </div>
+            
+            <!-- Format Icon -->
+            <div class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur text-xs px-2 py-1 rounded shadow text-amber-400 border border-slate-700">
+              <i class="fa-solid fa-file-pdf" x-show="file.mimeType.includes('pdf')"></i>
+              <i class="fa-solid fa-image" x-show="file.mimeType.includes('image')"></i>
+            </div>
+          </a>
+          
+          <!-- File Details -->
+          <div class="p-3 border-t border-slate-700 bg-slate-800/80 flex-1 flex flex-col justify-between">
+            <h4 class="text-xs font-bold text-slate-200 line-clamp-2 leading-tight" x-text="file.name" :title="file.name"></h4>
+            <div class="flex items-center justify-between mt-3 text-[10px] text-slate-500 font-mono">
+              <span x-text="new Date(file.dateCreated).toLocaleDateString('id-ID')"></span>
+              <a :href="file.url" target="_blank" class="text-emerald-400 hover:text-emerald-300 font-bold px-2 py-1 bg-emerald-500/10 rounded border border-emerald-500/30">Lihat</a>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    
+  </div>
+</div>
+
+<script>
+function viewBrochureManager() {
+  return {
+    regions: [
+      { id: '1qcxBC6xe0hvcIgk8jYhZ0M2KQlPuNfGp', name: 'Banyumas' },
+      { id: '1ReZw4BezbCEIUW3aRNr9n4yzF4DVo5SM', name: 'Gresik' },
+      { id: '13BMVYkOQ5CR_3gByOeiFewieLPKfHYea', name: 'Jabodetabek' },
+      { id: '1lmsMrrGz9XUTy6yFKlX4EKIwD8ALltGR', name: 'Pekalongan Raya' },
+      { id: '1_ZP2XtFIezI291MfqZRTWuKZsACU2Lb-', name: 'Rembang' },
+      { id: '1a9bZVkKe8jpJbKVbXJ2xkGS3K0IYaGlA', name: 'Samarinda' },
+      { id: '1lbWdXRnB3ztJFkBqScTcgNOlaemtLEpG', name: 'Solo Raya' },
+      { id: '1-lA9bsnqfrOoTTiLvBpssJY7C3_vdo-J', name: 'Surabaya' }
+    ],
+    selectedRegion: '',
+    files: [],
+    isLoading: false,
+
+    fetchBrochures() {
+      if (!this.selectedRegion) return;
+      this.isLoading = true;
+      this.files = [];
+      
+      google.script.run
+        .withSuccessHandler(res => {
+          this.isLoading = false;
+          if (res && res.success) {
+            this.files = res.data || [];
+          } else {
+            Swal.fire({ title: 'Gagal', text: res?.message || 'Gagal memuat brosur', icon: 'error', background: '#0f172a', color: '#f87171' });
+          }
+        })
+        .withFailureHandler(err => {
+          this.isLoading = false;
+          Swal.fire({ title: 'Error', text: err.message, icon: 'error', background: '#0f172a', color: '#f87171' });
+        })
+        .apiGetBrochureFiles(window.sessionToken, this.selectedRegion);
+    }
+  }
+}
+</script>
