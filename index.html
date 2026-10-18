@@ -6,7 +6,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Dual Database Engine (Supabase + Google Sheets) & GAS Polyfill -->
-  <script src="dual-db-engine.js"></script>
+  <script src="dual-db-engine.js?v=2.5"></script>
 
   <!-- Responsive Mobile Meta -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
@@ -21296,21 +21296,28 @@ function estimasiManager() {
           .withSuccessHandler(res => {
             this.isLoading = false;
             if (res && res.success) {
-              this.dataList = res.data;
-              this.ymKeys = res.ymKeys;
-              this.ymKeys.sort((a,b) => a.localeCompare(b));
+              this.dataList = Array.isArray(res.data) ? res.data : [];
+              this.ymKeys = Array.isArray(res.ymKeys) ? res.ymKeys : [];
+              if (this.ymKeys.length > 0) {
+                this.ymKeys.sort((a,b) => a.localeCompare(b));
+              }
 
               this.groupedMonths = {};
               this.ymKeys.forEach(ym => {
-                const [y, m] = ym.split('-');
-                if (!this.groupedMonths[y]) this.groupedMonths[y] = [];
-                if (!this.groupedMonths[y].includes(m)) {
-                  this.groupedMonths[y].push(m);
+                const parts = ym ? ym.split('-') : [];
+                if (parts.length >= 2) {
+                  const [y, m] = parts;
+                  if (!this.groupedMonths[y]) this.groupedMonths[y] = [];
+                  if (!this.groupedMonths[y].includes(m)) {
+                    this.groupedMonths[y].push(m);
+                  }
                 }
               });
               
               Object.keys(this.groupedMonths).forEach(y => {
-                this.groupedMonths[y].sort((a,b) => parseInt(a, 10) - parseInt(b, 10));
+                if (Array.isArray(this.groupedMonths[y])) {
+                  this.groupedMonths[y].sort((a,b) => parseInt(a, 10) - parseInt(b, 10));
+                }
               });
 
               this.applyFilter();
@@ -23237,7 +23244,7 @@ function viewBrochureManager() {
               this.loading = false;
               this.loginError = 'Waktu verifikasi melebihi batas. Silakan periksa koneksi atau coba login kembali.';
             }
-          }, 8000);
+          }, 15000);
 
           try {
             google.script.run
