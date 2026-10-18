@@ -1114,9 +1114,252 @@
       return await this.query('cost_structure', '*');
     },
 
-    async getEstimasiList() {
-      return await this.query('data_paket', '*');
+    // ----------------------------------------------------
+    // HOTEL & BROSUR (Tabel: hotel - 223 Rows)
+    // ----------------------------------------------------
+    async getHotelList() {
+      const rows = await this.query('hotel', '*');
+      const hotelMap = {};
+      rows.forEach(r => {
+        const name = (r.nama_hotel || r.namahotel || 'Hotel').trim();
+        const city = (r.kota || 'Makkah').trim();
+        const key = `${name}___${city}`;
+        if (!hotelMap[key]) {
+          hotelMap[key] = {
+            idhotel: r.id_hotel || r.id,
+            idHotel: r.id_hotel || r.id,
+            id: r.id_hotel || r.id,
+            namahotel: name,
+            namaHotel: name,
+            kota: city,
+            provider: r.provider || '',
+            brochure: r.brochure || '',
+            tglinput: r.createdat || r.tanggal_input || '2026-09-01',
+            defaultMargin: 10,
+            ratePeriods: []
+          };
+        }
+        hotelMap[key].ratePeriods.push({
+          id: r.id,
+          tglawal: r.tanggal_awal_from_ || r.tglawal || '',
+          tglakhir: r.tanggal_akhir_to_ || r.tglakhir || '',
+          hargadouble: r.harga_beli_double_dbl_ || r.hargadouble || '',
+          hargatriple: r.harga_beli_triple_trpl_ || r.hargatriple || '',
+          hargaquod: r.harga_beli_quad_quad_ || r.hargaquod || '',
+          hrgjualdouble: r.harga_jual_double || r.hrgjualdouble || '',
+          hrgjualtriple: r.harga_jual_triple || r.hrgjualtriple || '',
+          hrgjualquod: r.harga_jual_quad || r.hrgjualquod || '',
+          meal_plan: r.meal_plan || 'F.B Fareast',
+          brochure: r.brochure || ''
+        });
+      });
+      return Object.values(hotelMap);
     },
+
+    async saveHotel(formData) {
+      const periods = formData.ratePeriods && formData.ratePeriods.length > 0 ? formData.ratePeriods : [{
+        tglawal: formData.tglawal || '',
+        tglakhir: formData.tglakhir || '',
+        hargadouble: formData.hargadouble || '',
+        hargatriple: formData.hargatriple || '',
+        hargaquod: formData.hargaquod || '',
+        hrgjualdouble: formData.hrgjualdouble || '',
+        hrgjualtriple: formData.hrgjualtriple || '',
+        hrgjualquod: formData.hrgjualquod || '',
+        meal_plan: formData.meal_plan || 'F.B Fareast',
+        brochure: formData.brochure || ''
+      }];
+
+      for (const p of periods) {
+        const record = {
+          nama_hotel: formData.namahotel || formData.namaHotel,
+          kota: formData.kota,
+          provider: formData.provider || '',
+          tanggal_awal_from_: p.tglawal || null,
+          tanggal_akhir_to_: p.tglakhir || null,
+          harga_beli_double_dbl_: String(p.hargadouble || ''),
+          harga_beli_triple_trpl_: String(p.hargatriple || ''),
+          harga_beli_quad_quad_: String(p.hargaquod || ''),
+          harga_jual_double: String(p.hrgjualdouble || ''),
+          harga_jual_triple: String(p.hrgjualtriple || ''),
+          harga_jual_quad: String(p.hrgjualquod || ''),
+          meal_plan: p.meal_plan || 'F.B Fareast',
+          brochure: p.brochure || formData.brochure || '',
+          createdat: DateUtils.toISODate()
+        };
+        if (p.id) {
+          await this.update('hotel', 'id', p.id, record);
+        } else {
+          await this.insert('hotel', record);
+        }
+      }
+      return { success: true, message: 'Data hotel dan periode tarif berhasil disimpan di Supabase' };
+    },
+
+    async deleteHotel(hotelId) {
+      await this.delete('hotel', 'id', hotelId);
+      return { success: true, message: 'Data hotel berhasil dihapus dari Supabase' };
+    },
+
+    async getHotelBrochureOptions() {
+      const rows = await this.query('hotel', 'nama_hotel,provider,kota');
+      const hotels = Array.from(new Set(rows.map(r => (r.nama_hotel || '').trim()))).filter(Boolean).sort();
+      const providers = Array.from(new Set(rows.map(r => (r.provider || '').trim()))).filter(Boolean).sort();
+      return { success: true, hotels, providers };
+    },
+
+    async searchHotelBrochureData(filter = {}) {
+      const rows = await this.query('hotel', '*');
+      const { namahotel, provider, startDate, endDate } = filter;
+      const startFilter = startDate ? new Date(startDate).getTime() : null;
+      const endFilter = endDate ? new Date(endDate).getTime() : null;
+
+      const filtered = rows.filter(r => {
+        const name = (r.nama_hotel || '').trim();
+        const prov = (r.provider || '').trim();
+        if (namahotel && !name.toLowerCase().includes(namahotel.toLowerCase())) return false;
+        if (provider && !prov.toLowerCase().includes(provider.toLowerCase())) return false;
+        if (startFilter || endFilter) {
+          const rStart = r.tanggal_awal_from_ ? new Date(r.tanggal_awal_from_).getTime() : null;
+          const rEnd = r.tanggal_akhir_to_ ? new Date(r.tanggal_akhir_to_).getTime() : null;
+          if (!rStart || !rEnd) return false;
+          if (startFilter && endFilter) {
+            if (rStart > endFilter || rEnd < startFilter) return false;
+          } else if (startFilter && rEnd < startFilter) return false;
+          else if (endFilter && rStart > endFilter) return false;
+        }
+        return true;
+      });
+
+      return filtered.map(r => ({
+        idhotel: r.id,
+        idHotel: r.id,
+        id: r.id,
+        namahotel: r.nama_hotel,
+        namaHotel: r.nama_hotel,
+        kota: r.kota || 'Makkah',
+        tglawal: r.tanggal_awal_from_,
+        tglakhir: r.tanggal_akhir_to_,
+        provider: r.provider || '',
+        brochure: r.brochure || '',
+        beli_dbl: r.harga_beli_double_dbl_,
+        beli_trpl: r.harga_beli_triple_trpl_,
+        beli_quad: r.harga_beli_quad_quad_,
+        jual_dbl: r.harga_jual_double,
+        jual_trpl: r.harga_jual_triple,
+        jual_quad: r.harga_jual_quad,
+        pax_dbl: r.harga_jual_per_jamah_double,
+        pax_trpl: r.harga_jual_per_jamah_triple,
+        pax_quad: r.harga_jual_per_jamah_quad,
+        meal_plan: r.meal_plan || 'F.B Fareast'
+      }));
+    },
+
+    // ----------------------------------------------------
+    // ESTIMASI KEBERANGKATAN (Tabel: data_jamaah_haji - 82 Rows)
+    // ----------------------------------------------------
+    async getEstimasiList() {
+      const rows = await this.query('data_jamaah_haji', '*');
+      return rows.map((r, idx) => ({
+        id: r.id || (idx + 1),
+        idJamaah: r.idjamaah || r.id,
+        NoPorsi: r.no_porsi || r.noporsi || r.nobpih || '',
+        noPorsi: r.no_porsi || r.noporsi || r.nobpih || '',
+        Nama: r.nama || r.nama_lengkap || 'Jamaah Haji',
+        nama: r.nama || r.nama_lengkap || 'Jamaah Haji',
+        Kanwil: r.kanwil || 'Jawa Barat',
+        kanwil: r.kanwil || 'Jawa Barat',
+        EstimasiBerangkat: r.estimasi_berangkat || r.estimasiberangkat || '',
+        estimasiBerangkat: r.estimasi_berangkat || r.estimasiberangkat || ''
+      }));
+    },
+
+    async saveEstimasi(id, val, user = 'Admin') {
+      const res = await this.update('data_jamaah_haji', 'id', id, {
+        estimasiberangkat: String(val || '').trim(),
+        tglestimasi: DateUtils.toISODate()
+      });
+      return { success: res.success, message: 'Estimasi keberangkatan berhasil disimpan di Supabase' };
+    },
+
+    // ----------------------------------------------------
+    // PEMBAYARAN KOLEKTIF AGEN & PAKET
+    // ----------------------------------------------------
+    async getAgenListWithPaket() {
+      const rows = await this.getJamaahList();
+      const agenMap = {};
+      rows.forEach((r, idx) => {
+        const namaAgen = (r.agent || r.namaAgen || r.nama_agen || 'Pusat').trim();
+        if (!namaAgen) return;
+        const paket = (r.jenisPaket || r.jenis_paket || r.paket || 'Paket Umrah').trim();
+        const idJamaah = r.id || r.idJamaah || ('JM-' + (idx + 1));
+        const namaLengkap = r.namaLengkap || r.nama || 'Jamaah';
+        const noKtp = r.noKtp || r.no_ktp || '';
+        const noHp = r.noHp || r.no_hp || '';
+        const totalHarga = Number(r.jumlahHarusDibayar || r.totalHarga || r.hargaPaket || 0);
+
+        if (!agenMap[namaAgen]) {
+          agenMap[namaAgen] = { namaAgen, pakets: {} };
+        }
+        if (!agenMap[namaAgen].pakets[paket]) {
+          agenMap[namaAgen].pakets[paket] = [];
+        }
+        agenMap[namaAgen].pakets[paket].push({
+          idJamaah,
+          id: idJamaah,
+          namaJamaah: namaLengkap,
+          nama: namaLengkap,
+          noKtp,
+          noHp,
+          jenisPaket: paket,
+          totalHarga
+        });
+      });
+
+      return Object.keys(agenMap).sort().map(namaAgen => ({
+        namaAgen,
+        pakets: Object.keys(agenMap[namaAgen].pakets).sort().map(pkt => ({
+          namaPaket: pkt,
+          jamaahList: agenMap[namaAgen].pakets[pkt]
+        }))
+      }));
+    },
+
+    async saveKolektifPayment(formData, currentUser = 'Admin') {
+      const jamaahList = (formData.jamaahList || []).filter(j => j.selected !== false);
+      if (jamaahList.length === 0) {
+        return { success: false, message: 'Tidak ada jamaah yang dipilih untuk pembayaran kolektif!' };
+      }
+      const newId = `GRP-PAY-${Date.now().toString().slice(-6)}`;
+      const tglBayar = formData.tanggal || DateUtils.toISODate();
+
+      for (const j of jamaahList) {
+        const record = {
+          id_kwitansi: `KW-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+          id_jamaah: j.idJamaah || j.id,
+          nama_jamaah: j.namaJamaah || j.nama,
+          no_ktp: j.noKtp || '',
+          jenis_paket: j.jenisPaket || formData.jenisPaket || '',
+          jumlah_pembayaran: String(j.nominal || 0),
+          metode_pembayaran: formData.metodePembayaran || 'Transfer Bank',
+          nama_bank: formData.namaBankTujuan || '',
+          no_referensi: formData.noReferensi || newId,
+          tgl_bayar: tglBayar,
+          keterangan: `Pembayaran Kolektif via Agen: ${formData.namaAgen} | Ref: ${newId} | Catatan: ${formData.catatan || '-'}`,
+          status_verifikasi: 'Verified',
+          created_at: new Date().toISOString()
+        };
+        await this.insert('history_pembayaran', record);
+      }
+
+      return {
+        success: true,
+        message: `Pembayaran kolektif berhasil disimpan untuk ${jamaahList.length} jamaah (Ref: ${newId}).`,
+        idGroupPayment: newId
+      };
+    },
+
+
 
     async getFlightList() {
       return [];
@@ -1462,28 +1705,29 @@
       return makePolymorphic(list);
     },
     async apiSaveHotel(formData) {
-      const res = await DualDatabase.insert('hotel', {
-        id_hotel: formData.idhotel || `HTL-${Date.now()}`,
-        nama_hotel: formData.namahotel,
-        kota: formData.kota,
-        provider: formData.provider,
-        brochure: formData.brochure,
-        tanggal_input: DateUtils.toISODate()
-      });
-      return { success: res.success, message: 'Data hotel berhasil disimpan di Supabase' };
+      return await DualDatabase.saveHotel(formData);
+    },
+    async saveHotel(formData) {
+      return await DualDatabase.saveHotel(formData);
     },
     async apiDeleteHotel(hotelId) {
-      const res = await DualDatabase.delete('hotel', 'id_hotel', hotelId);
-      return { success: res.success, message: 'Hotel berhasil dihapus dari Supabase' };
+      return await DualDatabase.deleteHotel(hotelId);
+    },
+    async deleteHotel(hotelId) {
+      return await DualDatabase.deleteHotel(hotelId);
     },
     async apiGetHotelBrochureOptions() {
-      const list = await DualDatabase.getHotelList();
-      const hotels = Array.from(new Set(list.map(h => h.namahotel))).filter(Boolean).sort();
-      const cities = Array.from(new Set(list.map(h => h.kota))).filter(Boolean).sort();
-      return { success: true, hotels, cities };
+      return await DualDatabase.getHotelBrochureOptions();
     },
-    async apiSearchHotelBrochureData() {
-      const list = await DualDatabase.getHotelList();
+    async getHotelBrochureFilterOptions() {
+      return await DualDatabase.getHotelBrochureOptions();
+    },
+    async apiSearchHotelBrochureData(filterPayload) {
+      const list = await DualDatabase.searchHotelBrochureData(filterPayload);
+      return makePolymorphic(list);
+    },
+    async searchHotelBrochureData(filterPayload) {
+      const list = await DualDatabase.searchHotelBrochureData(filterPayload);
       return makePolymorphic(list);
     },
     async apiGetBrochureFiles() {
@@ -1621,12 +1865,23 @@
       return await this.deleteJamaahPayment(idKwitansi);
     },
     async apiGetAgenListWithPaket() {
-      const jamaah = await DualDatabase.getJamaahList();
-      const agents = Array.from(new Set(jamaah.map(j => j.agent || j.namaAgen))).filter(Boolean);
-      return { success: true, agenList: agents, data: agents };
+      const list = await DualDatabase.getAgenListWithPaket();
+      return makePolymorphic(list);
     },
-    async apiSaveKolektifPayment() {
-      return { success: true, message: 'Pembayaran kolektif berhasil disimpan' };
+    async getAgenListWithPaket() {
+      const list = await DualDatabase.getAgenListWithPaket();
+      return makePolymorphic(list);
+    },
+    async apiSaveKolektifPayment(arg1, arg2) {
+      const payload = (arg2 && typeof arg2 === 'object') ? arg2 : arg1;
+      return await DualDatabase.saveKolektifPayment(payload);
+    },
+    async saveKolektifPayment(data) {
+      return await DualDatabase.saveKolektifPayment(data);
+    },
+    async apiSaveGroupPayment(arg1, arg2) {
+      const payload = (arg2 && typeof arg2 === 'object') ? arg2 : arg1;
+      return await DualDatabase.saveKolektifPayment(payload);
     },
     async updateJamaahRoomAssignment() {
       return { success: true, message: 'Penempatan kamar berhasil diperbarui' };
@@ -1652,8 +1907,24 @@
       const list = await DualDatabase.getEstimasiList();
       return makePolymorphic(list);
     },
-    async apiSaveEstimasi() {
-      return { success: true, message: 'Data estimasi berhasil disimpan' };
+    async getEstimasiKeberangkatanList() {
+      const list = await DualDatabase.getEstimasiList();
+      return makePolymorphic(list);
+    },
+    async apiSaveEstimasi(arg1, arg2, arg3) {
+      let id = arg1;
+      let val = arg2;
+      if (arg3 !== undefined) {
+        id = arg2;
+        val = arg3;
+      }
+      return await DualDatabase.saveEstimasi(id, val);
+    },
+    async saveEstimasiBerangkat(id, val, user) {
+      return await DualDatabase.saveEstimasi(id, val, user);
+    },
+    async apiGetEstimasiHistory() {
+      return makePolymorphic([]);
     },
     async apiGetHistoryEstimasiList() {
       return makePolymorphic([]);
