@@ -23232,26 +23232,41 @@ function viewBrochureManager() {
             country: ''
           };
 
-          google.script.run
-            .withSuccessHandler((res) => {
+          const watchdog = setTimeout(() => {
+            if (this.loading) {
               this.loading = false;
-              if (res.success) {
-                this.currentUser = res.user;
-                this.isAuthenticated = true;
-                sessionStorage.setItem('app_session', JSON.stringify(res.user));
-                this.showToast('Selamat datang, ' + res.user.fullName + '!', 'success');
-                // Selalu arahkan ke Dashboard Utama saat berhasil login
-                this.navigateToModule('mod_dashboard', 'Dashboard Utama');
-                this.loadNavigation();
-              } else {
-                this.loginError = res.message;
-              }
-            })
-            .withFailureHandler((err) => {
-              this.loading = false;
-              this.loginError = 'Gagal terhubung ke server Google Apps Script: ' + err.message;
-            })
-            .apiLogin(this.loginForm.username, this.loginForm.password, clientMeta);
+              this.loginError = 'Waktu verifikasi melebihi batas. Silakan periksa koneksi atau coba login kembali.';
+            }
+          }, 8000);
+
+          try {
+            google.script.run
+              .withSuccessHandler((res) => {
+                clearTimeout(watchdog);
+                this.loading = false;
+                if (res && res.success) {
+                  this.currentUser = res.user;
+                  this.isAuthenticated = true;
+                  sessionStorage.setItem('app_session', JSON.stringify(res.user));
+                  this.showToast('Selamat datang, ' + (res.user.fullName || res.user.username) + '!', 'success');
+                  // Selalu arahkan ke Dashboard Utama saat berhasil login
+                  this.navigateToModule('mod_dashboard', 'Dashboard Utama');
+                  this.loadNavigation();
+                } else {
+                  this.loginError = (res && res.message) ? res.message : 'Username atau password tidak cocok.';
+                }
+              })
+              .withFailureHandler((err) => {
+                clearTimeout(watchdog);
+                this.loading = false;
+                this.loginError = 'Gagal verifikasi login: ' + (err.message || err);
+              })
+              .apiLogin(this.loginForm.username, this.loginForm.password, clientMeta);
+          } catch (e) {
+            clearTimeout(watchdog);
+            this.loading = false;
+            this.loginError = 'Terjadi kesalahan sistem login: ' + e.message;
+          }
         },
 
         handleLogout() {

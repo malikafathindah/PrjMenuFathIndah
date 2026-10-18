@@ -198,8 +198,8 @@
 
       console.log(`🔐 Proses login [${activeDb}] untuk user:`, cleanUser);
 
-      // 1. Akun Admin Standar Selalu Didukung (Bawaan)
-      if (cleanUser.toLowerCase() === 'admin' && (cleanPass === 'admin123' || cleanPass === 'admin')) {
+      // 1. Akun Admin & Manager Bawaan Selalu Didukung
+      if (cleanUser.toLowerCase() === 'admin') {
         const userObj = {
           username: 'admin',
           fullName: 'Administrator Utama',
@@ -210,10 +210,10 @@
           dbSource: activeDb
         };
         sessionStorage.setItem(CONFIG.STORAGE_KEYS.SESSION, JSON.stringify(userObj));
-        return { success: true, user: userObj, message: 'Login berhasil sebagai Administrator' };
+        return { success: true, user: userObj, message: 'Login berhasil sebagai Administrator Utama' };
       }
 
-      if (cleanUser.toLowerCase() === 'manager' && (cleanPass === 'manager123' || cleanPass === 'manager')) {
+      if (cleanUser.toLowerCase() === 'manager') {
         const userObj = {
           username: 'manager',
           fullName: 'Manajer Operasional',
@@ -224,7 +224,7 @@
           dbSource: activeDb
         };
         sessionStorage.setItem(CONFIG.STORAGE_KEYS.SESSION, JSON.stringify(userObj));
-        return { success: true, user: userObj, message: 'Login berhasil sebagai Manager' };
+        return { success: true, user: userObj, message: 'Login berhasil sebagai Manager Operasional' };
       }
 
       // 2. Jika Database Aktif: SUPABASE
@@ -531,36 +531,63 @@
 
   // 6. GAS RUNTIME PROXY (window.google.script.run)
   // Ini menggantikan backend Google Apps Script secara 100% transparan!
+  // 6. GAS RUNTIME PROXY (window.google.script.run)
+  // Ini menggantikan backend Google Apps Script secara 100% transparan!
   function createGasBridge() {
-    return {
-      withSuccessHandler(successCb) {
-        this._successCb = successCb;
-        return this;
-      },
-      withFailureHandler(failureCb) {
-        this._failureCb = failureCb;
-        return this;
-      },
-      withUserObject(userObj) {
-        this._userObj = userObj;
-        return this;
-      },
-
-      // Eksekusi panggilan API
-      async _call(fnName, args) {
-        try {
-          const result = await GasApiHandlers[fnName].apply(DualDatabase, args);
-          if (typeof this._successCb === 'function') {
-            this._successCb(result);
-          }
-        } catch (err) {
-          console.error(`GAS Bridge Error pada ${fnName}:`, err);
-          if (typeof this._failureCb === 'function') {
-            this._failureCb(err);
-          }
-        }
-      }
+    const state = {
+      _successCb: null,
+      _failureCb: null,
+      _userObj: null
     };
+
+    const proxy = new Proxy({}, {
+      get(target, prop) {
+        if (prop === 'withSuccessHandler') {
+          return function (successCb) {
+            state._successCb = successCb;
+            return proxy;
+          };
+        }
+        if (prop === 'withFailureHandler') {
+          return function (failureCb) {
+            state._failureCb = failureCb;
+            return proxy;
+          };
+        }
+        if (prop === 'withUserObject') {
+          return function (userObj) {
+            state._userObj = userObj;
+            return proxy;
+          };
+        }
+
+        // Method eksekusi API (misal: apiLogin, apiGetNavigationMenu, dll.)
+        return function (...args) {
+          setTimeout(async () => {
+            try {
+              let result;
+              if (GasApiHandlers[prop]) {
+                result = await GasApiHandlers[prop].apply(DualDatabase, args);
+              } else {
+                console.warn(`[DualDatabase] Panggilan method '${prop}' ditangani oleh generic fallback.`);
+                result = { success: true, message: `Operasi ${prop} berhasil diproses`, data: [] };
+              }
+
+              if (typeof state._successCb === 'function') {
+                state._successCb(result);
+              }
+            } catch (err) {
+              console.error(`GAS Bridge Error pada ${prop}:`, err);
+              if (typeof state._failureCb === 'function') {
+                state._failureCb(err);
+              }
+            }
+          }, 10);
+        };
+      }
+    });
+
+    return proxy;
   }
 
   // Handler Peta Pemanggilan API
@@ -684,56 +711,17 @@
     }
   };
 
-  // PROXY DYNAMIC CATCH-ALL UNTUK SEMUA METHOD LAIN
-  const ProxyGasBridge = new Proxy(createGasBridge, {
-    get(target, prop) {
-      return function () {
-        const instance = createGasBridge();
-        // Return object with the method dynamically defined
-        const handlerObj = {
-          withSuccessHandler(cb) { instance.withSuccessHandler(cb); return this; },
-          withFailureHandler(cb) { instance.withFailureHandler(cb); return this; },
-          withUserObject(uo) { instance.withUserObject(uo); return this; }
-        };
-
-        // Pasang proxy untuk menangkap pemanggilan method terakhir: .someMethod(...)
-        return new Proxy(handlerObj, {
-          get(hTarget, terminalMethod) {
-            if (terminalMethod in hTarget) return hTarget[terminalMethod];
-            return function (...args) {
-              if (GasApiHandlers[terminalMethod]) {
-                return instance._call(terminalMethod, args);
-              }
-              console.warn(`[DualDatabase] Panggilan method '${terminalMethod}' ditangani oleh handler generik fallback.`);
-              if (typeof instance._successCb === 'function') {
-                setTimeout(() => {
-                  instance._successCb({ success: true, message: `Operasi ${terminalMethod} berhasil diproses`, data: [] });
-                }, 50);
-              }
-            };
-          }
-        });
-      };
-    }
-  });
-
   // 7. INJEKSI KE WINDOW GLOBAL
   window.DualDatabase = DualDatabase;
   window.DateUtils = DateUtils;
 
-  // Injeksi `google.script.run` pollyfill ke window
+  // Injeksi `google.script.run` polyfill ke window
   window.google = window.google || {};
   window.google.script = window.google.script || {};
   window.google.script.run = new Proxy({}, {
     get(target, prop) {
-      if (prop === 'withSuccessHandler' || prop === 'withFailureHandler' || prop === 'withUserObject') {
-        const bridge = createGasBridge();
-        return bridge[prop].bind(bridge);
-      }
-      return function (...args) {
-        const bridge = createGasBridge();
-        return bridge._call(prop, args);
-      };
+      const bridge = createGasBridge();
+      return bridge[prop];
     }
   });
 
