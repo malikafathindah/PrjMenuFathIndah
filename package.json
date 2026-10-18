@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "migrate:supabase": "node migrate_data_to_supabase.js"
   },
   "keywords": [
     "fath-indah",

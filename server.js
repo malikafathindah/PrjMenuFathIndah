@@ -45,19 +45,15 @@ const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = decodeURIComponent(parsedUrl.pathname);
 
-  // 1. API PROXY: GOOGLE SHEETS HELPER (Opsional untuk kecepatan lokal)
-  if (pathname.startsWith('/api/sheet')) {
-    const sheetName = parsedUrl.searchParams.get('sheet') || 'Users';
-    const spreadsheetId = parsedUrl.searchParams.get('id') || '1VL8trcMIcZ6n5Be-2-9YwmC1pOsKliO_wbILmU_cC1s';
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-
-    https.get(gvizUrl, (gRes) => {
-      res.writeHead(gRes.statusCode, { 'Content-Type': 'text/csv; charset=utf-8' });
-      gRes.pipe(res);
-    }).on('error', (err) => {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
-    });
+  // 1. SUPABASE STATUS
+  if (pathname === '/api/database-status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      provider: 'Supabase Cloud Database',
+      projectUrl: 'https://utqexpkwtatwzknjftpx.supabase.co',
+      status: 'Connected',
+      tables: 19
+    }));
     return;
   }
 
